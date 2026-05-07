@@ -112,37 +112,23 @@ export async function supabaseServer() {
 }
 ```
 
-### 5. Initial schema
+### 5. Run the schema
 
-Run this in the Supabase SQL editor to create a basic `decks` table that we'll
-use first:
+Open `supabase/schema.sql` and paste it into the Supabase SQL editor, then
+click Run. It creates `collections` (binder / bulk / deck) and
+`collection_cards`, with row-level security so each user only sees their own
+data.
 
-```sql
-create table public.decks (
-  id uuid primary key default gen_random_uuid(),
-  user_id uuid references auth.users on delete cascade not null,
-  name text not null,
-  description text,
-  created_at timestamptz default now() not null
-);
+### 6. Configure auth redirect URLs
 
-alter table public.decks enable row level security;
+In Supabase: **Authentication → URL Configuration** add your Render URL to
+**Site URL** and to **Redirect URLs** (e.g.
+`https://magical-database.onrender.com/auth/callback`). For local dev also
+add `http://localhost:3000/auth/callback`.
 
-create policy "Users see their own decks"
-  on public.decks for select using (auth.uid() = user_id);
-
-create policy "Users insert their own decks"
-  on public.decks for insert with check (auth.uid() = user_id);
-
-create policy "Users update their own decks"
-  on public.decks for update using (auth.uid() = user_id);
-
-create policy "Users delete their own decks"
-  on public.decks for delete using (auth.uid() = user_id);
-```
-
-Cards themselves stay on Scryfall — we only persist references (the Scryfall
-card `id`) plus user-owned data (decks, lists, notes).
+That's it — sign in via the **Sign in** button, then visit `/collections` to
+start adding cards. Cards themselves stay on Scryfall; we only persist
+references (the Scryfall card `id` + display fields) plus user-owned data.
 
 ## Attribution
 

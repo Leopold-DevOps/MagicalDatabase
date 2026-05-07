@@ -1,6 +1,9 @@
 import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { Suspense } from "react";
+import { AddToCollection } from "@/components/AddToCollection";
+import { Printings, PrintingsSkeleton } from "@/components/Printings";
 import {
   getCard,
   primaryImage,
@@ -53,23 +56,29 @@ export default async function CardDetailPage({ params }: { params: Params }) {
       </div>
 
       <div className="grid gap-8 md:grid-cols-[minmax(260px,360px)_1fr]">
-        <div className="surface overflow-hidden">
-          <div className="relative aspect-[5/7] w-full bg-ink-950">
-            {heroImg ? (
-              <Image
-                src={heroImg}
-                alt={card.name}
-                fill
-                sizes="(max-width: 768px) 80vw, 360px"
-                className="object-cover"
-                priority
-              />
-            ) : (
-              <div className="grid h-full place-items-center text-ink-400">
-                {card.name}
-              </div>
-            )}
+        <div className="flex flex-col gap-4">
+          <div className="surface-glow overflow-hidden">
+            <div className="relative aspect-[5/7] w-full bg-ink-950">
+              {heroImg ? (
+                <Image
+                  src={heroImg}
+                  alt={card.name}
+                  fill
+                  sizes="(max-width: 768px) 80vw, 360px"
+                  className="object-cover"
+                  priority
+                />
+              ) : (
+                <div className="grid h-full place-items-center text-ink-400">
+                  {card.name}
+                </div>
+              )}
+            </div>
           </div>
+
+          <Suspense fallback={null}>
+            <AddToCollection card={card} />
+          </Suspense>
         </div>
 
         <div className="flex flex-col gap-5">
@@ -79,6 +88,7 @@ export default async function CardDetailPage({ params }: { params: Params }) {
               {card.set_name}
               {card.collector_number ? ` · #${card.collector_number}` : ""}
               {card.rarity ? ` · ${capitalize(card.rarity)}` : ""}
+              {card.artist ? ` · illus. ${card.artist}` : ""}
             </p>
           </header>
 
@@ -91,6 +101,10 @@ export default async function CardDetailPage({ params }: { params: Params }) {
           <Meta card={card} />
         </div>
       </div>
+
+      <Suspense fallback={<PrintingsSkeleton />}>
+        <Printings card={card} />
+      </Suspense>
     </div>
   );
 }
@@ -115,7 +129,7 @@ function FaceBlock({ face }: { face: ScryfallCardFace }) {
         </p>
       ) : null}
       {face.flavor_text ? (
-        <p className="mt-3 border-l-2 border-ink-800 pl-3 text-sm italic text-ink-400">
+        <p className="mt-3 border-l-2 border-violet-400/40 pl-3 text-sm italic text-ink-400">
           {face.flavor_text}
         </p>
       ) : null}
@@ -157,10 +171,7 @@ function Meta({ card }: { card: ScryfallCard }) {
           </p>
           <div className="flex flex-wrap gap-1.5">
             {legalEntries.map(([format]) => (
-              <span
-                key={format}
-                className="rounded-md border border-ink-800 px-2 py-0.5 text-xs text-ink-300"
-              >
+              <span key={format} className="chip">
                 {format}
               </span>
             ))}

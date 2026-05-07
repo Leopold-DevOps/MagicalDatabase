@@ -45,6 +45,8 @@ export type ScryfallCard = {
   prices?: Record<string, string | null>;
   scryfall_uri?: string;
   legalities?: Record<string, string>;
+  oracle_id?: string;
+  prints_search_uri?: string;
 };
 
 export type ScryfallSearchResponse = {
@@ -91,6 +93,17 @@ export async function searchCards(
 
 export async function getCard(id: string): Promise<ScryfallCard> {
   return scryfallFetch<ScryfallCard>(`/cards/${encodeURIComponent(id)}`);
+}
+
+export async function getPrints(
+  card: ScryfallCard,
+): Promise<ScryfallCard[]> {
+  const oracleId = card.oracle_id;
+  if (!oracleId) return [];
+  const data = await scryfallFetch<ScryfallSearchResponse>(
+    `/cards/search?q=oracleid%3A${encodeURIComponent(oracleId)}&unique=prints&order=released&dir=desc`,
+  );
+  return data.data ?? [];
 }
 
 export function primaryImage(card: ScryfallCard): string | undefined {

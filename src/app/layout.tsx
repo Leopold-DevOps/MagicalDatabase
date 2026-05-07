@@ -1,11 +1,13 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { Suspense } from "react";
+import { UserMenu } from "@/components/UserMenu";
 import "./globals.css";
 
 export const metadata: Metadata = {
   title: "Magical Database — Magic: The Gathering Card Search",
   description:
-    "A fast, modern explorer for Magic: The Gathering cards, powered by Scryfall.",
+    "A magical, modern explorer for Magic: The Gathering cards, powered by Scryfall.",
 };
 
 export default function RootLayout({
@@ -29,11 +31,11 @@ export default function RootLayout({
       </head>
       <body className="font-sans antialiased">
         <div className="mx-auto flex min-h-screen max-w-6xl flex-col px-6">
-          <header className="flex items-center justify-between border-b border-ink-800/60 py-5">
+          <header className="flex items-center justify-between border-b border-ink-700/50 py-5">
             <Link href="/" className="group flex items-center gap-2.5">
               <span
                 aria-hidden
-                className="grid h-8 w-8 place-items-center rounded-lg bg-gradient-to-br from-violet-500 to-violet-700 text-sm font-semibold text-white shadow-soft transition group-hover:from-violet-400 group-hover:to-violet-600"
+                className="grid h-8 w-8 place-items-center rounded-lg bg-gradient-to-br from-violet-400 via-violet-500 to-violet-700 text-sm font-semibold text-white shadow-glow transition group-hover:from-violet-300 group-hover:to-violet-600"
               >
                 ✦
               </span>
@@ -41,27 +43,25 @@ export default function RootLayout({
                 Magical Database
               </span>
             </Link>
-            <nav className="flex items-center gap-6 text-sm text-ink-300">
-              <Link href="/" className="transition hover:text-white">
-                Home
-              </Link>
+            <nav className="flex items-center gap-5 text-sm text-ink-300">
               <Link href="/cards" className="transition hover:text-white">
                 Cards
               </Link>
-              <a
-                href="https://scryfall.com/docs/api"
-                target="_blank"
-                rel="noreferrer"
+              <Link
+                href="/collections"
                 className="transition hover:text-white"
               >
-                API
-              </a>
+                Collections
+              </Link>
+              <Suspense fallback={null}>
+                <UserMenu />
+              </Suspense>
             </nav>
           </header>
 
           <main className="flex-1 py-10">{children}</main>
 
-          <footer className="border-t border-ink-800/60 py-6 text-center text-xs text-ink-500">
+          <footer className="border-t border-ink-700/50 py-6 text-center text-xs text-ink-500">
             Card data from{" "}
             <a
               href="https://scryfall.com"
