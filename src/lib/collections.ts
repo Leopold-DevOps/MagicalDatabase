@@ -58,6 +58,7 @@ export type Collection = {
   type: CollectionType;
   description: string | null;
   color: CollectionColor;
+  binder_settings: Record<string, unknown> | null;
   created_at: string;
 };
 
@@ -70,6 +71,7 @@ export type CollectionCard = {
   set_name: string | null;
   image_url: string | null;
   quantity: number;
+  position: number | null;
   added_at: string;
 };
 

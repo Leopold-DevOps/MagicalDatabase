@@ -18,13 +18,16 @@ create table if not exists public.collections (
   description text,
   color text not null default 'arcane'
     check (color in ('arcane','ember','forest','tide','sun','shadow')),
+  binder_settings jsonb not null default '{}'::jsonb,
   created_at timestamptz not null default now()
 );
 create index if not exists collections_user_id_idx on public.collections(user_id);
 
--- if upgrading from an earlier schema, ensure the color column exists
+-- if upgrading from an earlier schema, ensure newer columns exist
 alter table public.collections
   add column if not exists color text not null default 'arcane';
+alter table public.collections
+  add column if not exists binder_settings jsonb not null default '{}'::jsonb;
 do $$
 begin
   if not exists (
@@ -47,10 +50,15 @@ create table if not exists public.collection_cards (
   set_name text,
   image_url text,
   quantity int not null default 1 check (quantity > 0),
+  position int,
   added_at timestamptz not null default now()
 );
+alter table public.collection_cards
+  add column if not exists position int;
 create index if not exists collection_cards_collection_id_idx
   on public.collection_cards(collection_id);
+create index if not exists collection_cards_position_idx
+  on public.collection_cards(collection_id, position);
 
 -- RLS — every row scoped to the owning user
 alter table public.collections enable row level security;

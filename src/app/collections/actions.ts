@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { normalizeBinderSettings } from "@/lib/binder";
 import {
   COLLECTION_COLORS,
   COLLECTION_TYPES,
@@ -114,6 +115,15 @@ export async function addCardToCollection(formData: FormData) {
   }
 
   const supabase = await supabaseServer();
+  const { data: maxRow } = await supabase
+    .from("collection_cards")
+    .select("position")
+    .eq("collection_id", collectionId)
+    .order("position", { ascending: false, nullsFirst: false })
+    .limit(1)
+    .maybeSingle();
+  const nextPosition = (maxRow?.position ?? 0) + 1;
+
   const { error } = await supabase.from("collection_cards").insert({
     collection_id: collectionId,
     scryfall_id: scryfallId,
@@ -122,6 +132,7 @@ export async function addCardToCollection(formData: FormData) {
     set_name: setName,
     image_url: imageUrl,
     quantity,
+    position: nextPosition,
   });
 
   if (error) return { error: error.message };
@@ -138,4 +149,54 @@ export async function removeCardFromCollection(
   const supabase = await supabaseServer();
   await supabase.from("collection_cards").delete().eq("id", id);
   if (collectionId) revalidatePath(`/collections/${collectionId}`);
+}
+
+export async function updateBinderSettings(
+  collectionId: string,
+  settings: unknown,
+): Promise<{ ok: true } | { error: string }> {
+  if (!collectionId) return { error: "Missing collection" };
+
+  const supabase = await supabaseServer();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "Not signed in" };
+
+  const normalized = normalizeBinderSettings(settings);
+  const { error } = await supabase
+    .from("collections")
+    .update({ binder_settings: normalized })
+    .eq("id", collectionId);
+
+  if (error) return { error: error.message };
+  revalidatePath(`/collections/${collectionId}`);
+  return { ok: true };
+}
+
+export async function reorderBinderCards(
+  collectionId: string,
+  positions: { id: string; position: number }[],
+): Promise<{ ok: true } | { error: string }> {
+  if (!collectionId || positions.length === 0) {
+    return { error: "Nothing to reorder" };
+  }
+
+  const supabase = await supabaseServer();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "Not signed in" };
+
+  for (const { id, position } of positions) {
+    const { error } = await supabase
+      .from("collection_cards")
+      .update({ position })
+      .eq("id", id)
+      .eq("collection_id", collectionId);
+    if (error) return { error: error.message };
+  }
+
+  revalidatePath(`/collections/${collectionId}`);
+  return { ok: true };
 }

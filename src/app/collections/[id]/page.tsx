@@ -1,6 +1,6 @@
-import Image from "next/image";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
+import { CollectionDetailView } from "@/components/CollectionDetailView";
 import {
   COLLECTION_COLOR_GRADIENT,
   COLLECTION_COLOR_RING,
@@ -13,7 +13,7 @@ import {
 } from "@/lib/collections";
 import { supabaseConfigured } from "@/lib/supabase/env";
 import { supabaseServer } from "@/lib/supabase/server";
-import { deleteCollection, removeCardFromCollection } from "../actions";
+import { deleteCollection } from "../actions";
 
 type Params = Promise<{ id: string }>;
 
@@ -43,6 +43,7 @@ export default async function CollectionDetailPage({
     .from("collection_cards")
     .select("*")
     .eq("collection_id", id)
+    .order("position", { ascending: true, nullsFirst: false })
     .order("added_at", { ascending: false });
 
   const c = collection as Collection;
@@ -55,7 +56,9 @@ export default async function CollectionDetailPage({
       : c.type === "deck"
         ? "chip-violet"
         : "chip-rose";
-  const color: CollectionColor = isCollectionColor(c.color) ? c.color : "arcane";
+  const color: CollectionColor = isCollectionColor(c.color)
+    ? c.color
+    : "arcane";
 
   return (
     <div className="flex flex-col gap-8">
@@ -110,75 +113,12 @@ export default async function CollectionDetailPage({
         </div>
       </header>
 
-      {items.length === 0 ? (
-        <div className="surface p-10 text-center">
-          <p className="text-ink-300">This collection is empty.</p>
-          <Link href="/cards" className="btn-primary mt-4">
-            Find cards to add
-          </Link>
-        </div>
-      ) : (
-        <ul className="stagger grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
-          {items.map((item) => (
-            <li key={item.id}>
-              <CardEntry item={item} />
-            </li>
-          ))}
-        </ul>
-      )}
-    </div>
-  );
-}
-
-function CardEntry({ item }: { item: CollectionCard }) {
-  return (
-    <div className="surface group overflow-hidden transition hover:border-violet-400/40">
-      <Link
-        href={`/cards/${item.scryfall_id}`}
-        className="block"
-        prefetch={false}
-      >
-        <div className="relative aspect-[5/7] w-full bg-ink-950">
-          {item.image_url ? (
-            <Image
-              src={item.image_url}
-              alt={item.card_name}
-              fill
-              sizes="(max-width: 640px) 50vw, (max-width: 1024px) 25vw, 220px"
-              className="object-cover transition duration-300 group-hover:scale-[1.03]"
-            />
-          ) : (
-            <div className="grid h-full place-items-center text-center text-sm text-ink-400">
-              {item.card_name}
-            </div>
-          )}
-        </div>
-        <div className="px-3 py-2.5">
-          <p className="truncate text-sm font-medium text-ink-100">
-            {item.card_name}
-          </p>
-          <p className="truncate text-xs text-ink-500">
-            {item.set_name ?? item.set_code?.toUpperCase()}
-          </p>
-        </div>
-      </Link>
-      <div className="flex items-center justify-between border-t border-ink-700/50 px-3 py-2">
-        <span className="chip">×{item.quantity}</span>
-        <form action={removeCardFromCollection}>
-          <input type="hidden" name="id" value={item.id} />
-          <input
-            type="hidden"
-            name="collection_id"
-            value={item.collection_id}
-          />
-          <button
-            type="submit"
-            className="btn-subtle text-rose-300 hover:bg-rose-400/10"
-          >
-            Remove
-          </button>
-        </form>
-      </div>
+      <CollectionDetailView
+        collectionId={c.id}
+        type={c.type}
+        cards={items}
+        rawSettings={c.binder_settings}
+      />
     </div>
   );
 }
