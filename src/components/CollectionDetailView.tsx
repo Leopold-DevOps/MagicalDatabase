@@ -141,7 +141,10 @@ function CardEntry({ item }: { item: CollectionCard }) {
         </div>
       </Link>
       <div className="flex items-center justify-between border-t border-ink-700/50 px-3 py-2">
-        <span className="chip">×{item.quantity}</span>
+        <div className="flex items-center gap-1">
+          <span className="chip">×{item.quantity}</span>
+          {item.is_foil && <span className="chip-gold">Foil</span>}
+        </div>
         <form action={removeCardFromCollection}>
           <input type="hidden" name="id" value={item.id} />
           <input

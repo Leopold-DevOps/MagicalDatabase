@@ -6,25 +6,18 @@ import {
   DragOverlay,
   KeyboardSensor,
   PointerSensor,
+  useDraggable,
   useDroppable,
   useSensor,
   useSensors,
   type DragEndEvent,
   type DragStartEvent,
 } from "@dnd-kit/core";
-import {
-  arrayMove,
-  rectSortingStrategy,
-  SortableContext,
-  sortableKeyboardCoordinates,
-  useSortable,
-} from "@dnd-kit/sortable";
-import { CSS } from "@dnd-kit/utilities";
 import Image from "next/image";
 import Link from "next/link";
 import { useMemo, useState, useTransition } from "react";
 import {
-  reorderBinderCards,
+  moveCard,
   updateBinderSettings,
 } from "@/app/collections/actions";
 import {
@@ -36,7 +29,7 @@ import {
   BINDER_LAYOUT_GRID,
   BINDER_STYLES,
   BINDER_STYLE_LABEL,
-  normalizeBinderSettings,
+  MAX_BINDER_PAGES,
   SORT_OPTIONS,
   type BinderCover,
   type BinderLayout,
@@ -52,14 +45,15 @@ type Props = {
   initialSettings: BinderSettings;
 };
 
+const TRAY_DROPPABLE_ID = "tray";
+const pocketId = (page: number, pocket: number) => `pocket-${page}-${pocket}`;
+
 export function BinderView({
   collectionId,
   initialCards,
   initialSettings,
 }: Props) {
-  const [cards, setCards] = useState<CollectionCard[]>(() =>
-    [...initialCards].sort(byPosition),
-  );
+  const [cards, setCards] = useState<CollectionCard[]>(initialCards);
   const [settings, setSettings] = useState<BinderSettings>(initialSettings);
   const [page, setPage] = useState(0);
   const [search, setSearch] = useState("");
@@ -71,89 +65,112 @@ export function BinderView({
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
-    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+    useSensor(KeyboardSensor),
   );
 
-  // Filtering/searching/sorting builds a *display* list. Reorder still
-  // operates on the underlying `cards` array so positions stay stable.
-  const filteredSorted = useMemo(() => {
-    let list = cards;
+  const trayCards = useMemo(
+    () =>
+      cards.filter(
+        (c) => c.page_index === null || c.pocket_index === null,
+      ),
+    [cards],
+  );
+
+  const placedByPage = useMemo(() => {
+    const m = new Map<number, Map<number, CollectionCard>>();
+    for (const c of cards) {
+      if (c.page_index !== null && c.pocket_index !== null) {
+        let inner = m.get(c.page_index);
+        if (!inner) {
+          inner = new Map();
+          m.set(c.page_index, inner);
+        }
+        inner.set(c.pocket_index, c);
+      }
+    }
+    return m;
+  }, [cards]);
+
+  const filteredTray = useMemo(() => {
+    let list = trayCards;
     const q = search.trim().toLowerCase();
-    if (q) {
-      list = list.filter((c) => c.card_name.toLowerCase().includes(q));
-    }
-    if (setFilter) {
-      list = list.filter((c) => c.set_code === setFilter);
-    }
+    if (q) list = list.filter((c) => c.card_name.toLowerCase().includes(q));
+    if (setFilter) list = list.filter((c) => c.set_code === setFilter);
     return [...list].sort(sortComparator(sort));
-  }, [cards, search, setFilter, sort]);
+  }, [trayCards, search, setFilter, sort]);
 
   const sets = useMemo(() => {
     const m = new Map<string, string>();
     cards.forEach((c) => {
-      if (c.set_code) {
-        m.set(c.set_code, c.set_name ?? c.set_code.toUpperCase());
-      }
+      if (c.set_code) m.set(c.set_code, c.set_name ?? c.set_code.toUpperCase());
     });
     return Array.from(m.entries())
       .map(([code, name]) => ({ code, name }))
       .sort((a, b) => a.name.localeCompare(b.name));
   }, [cards]);
 
-  const isSorted = sort !== "added-desc" || !!search || !!setFilter;
-  const perPage = settings.pocketsPerPage;
-  const totalPages = Math.max(
-    1,
-    Math.ceil(filteredSorted.length / perPage) || 1,
-  );
+  const totalPages = settings.pageCount;
   const safePage = Math.min(page, totalPages - 1);
-  const pageStart = safePage * perPage;
-  const pageCards = filteredSorted.slice(pageStart, pageStart + perPage);
-  const pageIds = pageCards.map((c) => c.id);
-  const activeCard = activeId
-    ? cards.find((c) => c.id === activeId) ?? null
-    : null;
+  const lastPageEmpty = !placedByPage.has(totalPages - 1);
+
+  const activeCard = activeId ? cards.find((c) => c.id === activeId) : null;
+
+  function persistSettings(next: BinderSettings) {
+    setSettings(next);
+    startTransition(async () => {
+      const result = await updateBinderSettings(collectionId, next);
+      if ("error" in result) setSettings(initialSettings);
+    });
+  }
+
+  function handleAddPage() {
+    if (totalPages >= MAX_BINDER_PAGES) return;
+    persistSettings({ ...settings, pageCount: totalPages + 1 });
+    setPage(totalPages);
+  }
+
+  function handleRemovePage() {
+    if (totalPages <= 1 || !lastPageEmpty) return;
+    const next = { ...settings, pageCount: totalPages - 1 };
+    persistSettings(next);
+    setPage(Math.min(safePage, next.pageCount - 1));
+  }
 
   function handleDragStart(event: DragStartEvent) {
     setActiveId(String(event.active.id));
   }
 
   function handleDragEnd(event: DragEndEvent) {
+    const id = activeId;
     setActiveId(null);
-    const { active, over } = event;
-    if (!over || active.id === over.id) return;
-    if (isSorted) return; // disabled while a custom sort is active
+    if (!id || !event.over) return;
+    const overId = String(event.over.id);
 
-    const ids = cards.map((c) => c.id);
-    const oldIndex = ids.indexOf(String(active.id));
-    const newIndex = ids.indexOf(String(over.id));
-    if (oldIndex < 0 || newIndex < 0) return;
+    // Determine target
+    let target: { type: "tray" } | { type: "pocket"; page: number; pocket: number };
+    if (overId === TRAY_DROPPABLE_ID) {
+      target = { type: "tray" };
+    } else {
+      const m = overId.match(/^pocket-(\d+)-(\d+)$/);
+      if (!m) return;
+      target = {
+        type: "pocket",
+        page: Number(m[1]),
+        pocket: Number(m[2]),
+      };
+    }
 
-    const next = arrayMove(cards, oldIndex, newIndex).map((c, i) => ({
-      ...c,
-      position: i + 1,
-    }));
-    setCards(next);
+    // Optimistic update
+    const draggedCard = cards.find((c) => c.id === id);
+    if (!draggedCard) return;
 
-    const positions = next.map(({ id, position }) => ({
-      id,
-      position: position!,
-    }));
+    const optimistic = applyMoveOptimistic(cards, draggedCard, target);
+    setCards(optimistic);
+
     startTransition(async () => {
-      const result = await reorderBinderCards(collectionId, positions);
+      const result = await moveCard(collectionId, id, target);
       if ("error" in result) {
-        // revert if persist fails
-        setCards([...initialCards].sort(byPosition));
-      }
-    });
-  }
-
-  function persistSettings(next: BinderSettings) {
-    setSettings(next);
-    startTransition(async () => {
-      const result = await updateBinderSettings(collectionId, next);
-      if ("error" in result) {
-        setSettings(initialSettings);
+        setCards(initialCards);
       }
     });
   }
@@ -176,64 +193,152 @@ export function BinderView({
         <SettingsPanel settings={settings} onChange={persistSettings} />
       )}
 
-      {filteredSorted.length === 0 ? (
-        <div className="surface p-10 text-center">
-          <p className="text-ink-300">
-            {cards.length === 0
-              ? "This binder is empty. Add cards from the search page."
-              : "No cards match your search/filter."}
-          </p>
-        </div>
-      ) : (
-        <DndContext
-          sensors={sensors}
-          collisionDetection={closestCenter}
-          onDragStart={handleDragStart}
-          onDragEnd={handleDragEnd}
-        >
-          <SortableContext items={pageIds} strategy={rectSortingStrategy}>
+      <DndContext
+        sensors={sensors}
+        collisionDetection={closestCenter}
+        onDragStart={handleDragStart}
+        onDragEnd={handleDragEnd}
+      >
+        <div className="grid gap-4 lg:grid-cols-[260px_1fr]">
+          <Tray cards={filteredTray} totalLoose={trayCards.length} />
+
+          <div className="flex flex-col gap-3">
             <BinderPage
               cover={settings.cover}
               style={settings.style}
               layout={settings.pocketsPerPage}
-              cards={pageCards}
-              isFiltered={isSorted}
+              page={safePage}
+              placed={placedByPage.get(safePage)}
             />
-          </SortableContext>
 
-          <DragOverlay>
-            {activeCard ? (
-              <div className="aspect-[5/7] w-full overflow-hidden rounded-md ring-2 ring-violet-400 shadow-glow">
-                {activeCard.image_url && (
-                  <Image
-                    src={activeCard.image_url}
-                    alt={activeCard.card_name}
-                    width={244}
-                    height={340}
-                    className="object-cover"
-                  />
-                )}
-              </div>
-            ) : null}
-          </DragOverlay>
-        </DndContext>
-      )}
+            <Pager
+              page={safePage}
+              totalPages={totalPages}
+              onChange={setPage}
+              onAddPage={handleAddPage}
+              onRemovePage={lastPageEmpty ? handleRemovePage : undefined}
+            />
+          </div>
+        </div>
 
-      <Pager
-        page={safePage}
-        totalPages={totalPages}
-        onChange={setPage}
-        cardCount={filteredSorted.length}
-      />
+        <DragOverlay dropAnimation={null}>
+          {activeCard ? <DragPreview card={activeCard} /> : null}
+        </DragOverlay>
+      </DndContext>
     </div>
   );
 }
 
-function byPosition(a: CollectionCard, b: CollectionCard) {
-  const pa = a.position ?? Number.MAX_SAFE_INTEGER;
-  const pb = b.position ?? Number.MAX_SAFE_INTEGER;
-  if (pa !== pb) return pa - pb;
-  return a.added_at.localeCompare(b.added_at);
+function applyMoveOptimistic(
+  cards: CollectionCard[],
+  dragged: CollectionCard,
+  target: { type: "tray" } | { type: "pocket"; page: number; pocket: number },
+): CollectionCard[] {
+  const fromTray =
+    dragged.page_index === null || dragged.pocket_index === null;
+
+  if (target.type === "tray") {
+    if (fromTray) return cards;
+    // Try to merge with existing tray stack
+    const existing = cards.find(
+      (c) =>
+        c.id !== dragged.id &&
+        c.page_index === null &&
+        c.pocket_index === null &&
+        c.scryfall_id === dragged.scryfall_id &&
+        c.is_foil === dragged.is_foil,
+    );
+    if (existing) {
+      return cards
+        .filter((c) => c.id !== dragged.id)
+        .map((c) =>
+          c.id === existing.id
+            ? { ...c, quantity: (c.quantity ?? 0) + (dragged.quantity ?? 1) }
+            : c,
+        );
+    }
+    return cards.map((c) =>
+      c.id === dragged.id
+        ? { ...c, page_index: null, pocket_index: null }
+        : c,
+    );
+  }
+
+  // target is a pocket
+  const { page, pocket } = target;
+  if (dragged.page_index === page && dragged.pocket_index === pocket) {
+    return cards;
+  }
+
+  const occupant = cards.find(
+    (c) =>
+      c.id !== dragged.id &&
+      c.page_index === page &&
+      c.pocket_index === pocket,
+  );
+
+  if (!occupant) {
+    if (fromTray && (dragged.quantity ?? 1) > 1) {
+      // split: keep stack with qty-1, push a virtual placed copy
+      const placed: CollectionCard = {
+        ...dragged,
+        id: `__optimistic-${dragged.id}`,
+        quantity: 1,
+        page_index: page,
+        pocket_index: pocket,
+      };
+      return [
+        ...cards.map((c) =>
+          c.id === dragged.id
+            ? { ...c, quantity: (c.quantity ?? 1) - 1 }
+            : c,
+        ),
+        placed,
+      ];
+    }
+    return cards.map((c) =>
+      c.id === dragged.id ? { ...c, page_index: page, pocket_index: pocket } : c,
+    );
+  }
+
+  if (!fromTray) {
+    // swap
+    const oldPage = dragged.page_index!;
+    const oldPocket = dragged.pocket_index!;
+    return cards.map((c) => {
+      if (c.id === dragged.id)
+        return { ...c, page_index: page, pocket_index: pocket };
+      if (c.id === occupant.id)
+        return { ...c, page_index: oldPage, pocket_index: oldPocket };
+      return c;
+    });
+  }
+
+  // dragged from tray onto occupied pocket → bump occupant to tray, place dragged
+  let next = cards.map((c) =>
+    c.id === occupant.id
+      ? { ...c, page_index: null, pocket_index: null }
+      : c,
+  );
+  if ((dragged.quantity ?? 1) > 1) {
+    next = next.map((c) =>
+      c.id === dragged.id ? { ...c, quantity: (c.quantity ?? 1) - 1 } : c,
+    );
+    next.push({
+      ...dragged,
+      id: `__optimistic-${dragged.id}`,
+      quantity: 1,
+      page_index: page,
+      pocket_index: pocket,
+    });
+  } else {
+    next = next.map((c) =>
+      c.id === dragged.id
+        ? { ...c, page_index: page, pocket_index: pocket }
+        : c,
+    );
+  }
+  return next;
 }
 
 function sortComparator(opt: SortOption) {
@@ -283,9 +388,9 @@ function Toolbar({
       <input
         value={search}
         onChange={(e) => onSearch(e.target.value)}
-        placeholder="Search this binder…"
+        placeholder="Search loose cards…"
         className="input-field flex-1 min-w-[180px]"
-        aria-label="Search binder"
+        aria-label="Search loose cards"
       />
       <select
         value={sort}
@@ -397,9 +502,9 @@ function SettingsPanel({
               aria-label={`Cover ${BINDER_COVER_LABEL[c]}`}
             >
               <div
-                className={`h-10 w-full rounded ${BINDER_COVER_GRADIENT[c]}`}
+                className={`h-8 w-full rounded ${BINDER_COVER_GRADIENT[c]}`}
               />
-              <p className="mt-1 text-center text-[11px] text-ink-300">
+              <p className="mt-1 text-center text-[10px] text-ink-300">
                 {BINDER_COVER_LABEL[c]}
               </p>
             </button>
@@ -410,64 +515,97 @@ function SettingsPanel({
   );
 }
 
+function Tray({
+  cards,
+  totalLoose,
+}: {
+  cards: CollectionCard[];
+  totalLoose: number;
+}) {
+  const { setNodeRef, isOver } = useDroppable({ id: TRAY_DROPPABLE_ID });
+  return (
+    <div
+      ref={setNodeRef}
+      className={`surface flex max-h-[640px] flex-col overflow-hidden p-3 transition lg:max-h-none lg:min-h-[400px] ${
+        isOver ? "border-violet-400/60 ring-2 ring-violet-400/40" : ""
+      }`}
+    >
+      <div className="mb-2 flex items-baseline justify-between">
+        <p className="text-xs uppercase tracking-wider text-ink-300">
+          Loose cards
+        </p>
+        <span className="text-[11px] text-ink-500">{totalLoose}</span>
+      </div>
+      {cards.length === 0 ? (
+        <div className="grid flex-1 place-items-center rounded-md border border-dashed border-ink-700/60 px-3 py-10 text-center text-xs text-ink-500">
+          {totalLoose === 0
+            ? "No loose cards. Drop a card here to take it out of the binder."
+            : "No matches in your search."}
+        </div>
+      ) : (
+        <ul className="grid grid-cols-3 gap-2 overflow-y-auto pr-1 lg:grid-cols-2">
+          {cards.map((c) => (
+            <li key={c.id}>
+              <DraggableCard card={c} size="tray" />
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
 function BinderPage({
   cover,
   style,
   layout,
-  cards,
-  isFiltered,
+  page,
+  placed,
 }: {
   cover: BinderCover;
   style: BinderStyle;
   layout: BinderLayout;
-  cards: CollectionCard[];
-  isFiltered: boolean;
+  page: number;
+  placed: Map<number, CollectionCard> | undefined;
 }) {
-  const slots = layout;
   const grid = BINDER_LAYOUT_GRID[layout];
-  const ringPositions = layout >= 9 ? [10, 35, 60, 85] : [12, 50, 88];
-
   return (
     <div
-      className={`relative overflow-hidden rounded-2xl ${BINDER_COVER_GRADIENT[cover]} p-4 shadow-glow animate-fade-in-up`}
+      className={`relative mx-auto w-full max-w-md overflow-hidden rounded-2xl ${BINDER_COVER_GRADIENT[cover]} p-3 shadow-glow animate-fade-in-up sm:max-w-lg`}
     >
       <div className="pointer-events-none absolute inset-0 opacity-[0.07] mix-blend-overlay [background-image:radial-gradient(circle_at_1px_1px,_white_1px,_transparent_0)] [background-size:18px_18px]" />
 
-      <div className="relative flex gap-4">
+      <div className="relative flex gap-3">
         {style === "ring" && (
           <div
-            className="hidden flex-col items-center justify-evenly py-4 sm:flex"
+            className="hidden flex-col items-center justify-evenly py-3 sm:flex"
             aria-hidden
           >
-            {ringPositions.map((_, i) => (
+            {Array.from({ length: layout >= 9 ? 4 : 3 }).map((_, i) => (
               <div
                 key={i}
-                className="h-3 w-3 rounded-full bg-black/45 ring-1 ring-white/20"
+                className="h-2.5 w-2.5 rounded-full bg-black/45 ring-1 ring-white/20"
               />
             ))}
           </div>
         )}
 
-        <div className="relative flex-1 rounded-xl bg-ink-950/40 p-3 backdrop-blur-sm">
-          <div className={`grid gap-3 ${grid}`}>
-            {Array.from({ length: slots }).map((_, i) => {
-              const card = cards[i];
-              return card ? (
-                <Sleeve
-                  key={card.id}
-                  card={card}
-                  draggable={!isFiltered}
-                />
-              ) : (
-                <EmptySleeve key={`empty-${i}`} />
-              );
-            })}
+        <div className="relative flex-1 rounded-xl bg-ink-950/40 p-2 backdrop-blur-sm">
+          <div className={`grid gap-2 ${grid}`}>
+            {Array.from({ length: layout }).map((_, i) => (
+              <Pocket
+                key={i}
+                page={page}
+                pocket={i}
+                card={placed?.get(i) ?? null}
+              />
+            ))}
           </div>
         </div>
       </div>
 
       <p
-        className={`mt-3 text-right text-xs ${BINDER_COVER_INK[cover]} opacity-80`}
+        className={`mt-2 text-right text-[10px] ${BINDER_COVER_INK[cover]} opacity-80`}
       >
         {BINDER_COVER_LABEL[cover]} ·{" "}
         {style === "ring" ? "Ring binder" : "Portfolio"}
@@ -476,74 +614,117 @@ function BinderPage({
   );
 }
 
-function Sleeve({
+function Pocket({
+  page,
+  pocket,
   card,
-  draggable,
 }: {
-  card: CollectionCard;
-  draggable: boolean;
+  page: number;
+  pocket: number;
+  card: CollectionCard | null;
 }) {
-  const sortable = useSortable({ id: card.id, disabled: !draggable });
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
-    sortable;
-  const style: React.CSSProperties = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-    opacity: isDragging ? 0.35 : 1,
-  };
-
+  const { setNodeRef, isOver } = useDroppable({ id: pocketId(page, pocket) });
   return (
     <div
       ref={setNodeRef}
-      style={style}
+      className={`relative aspect-[5/7] rounded-md transition ${
+        isOver
+          ? "ring-2 ring-violet-300/80 bg-violet-400/10"
+          : card
+            ? "ring-1 ring-white/10 bg-black/30"
+            : "border border-dashed border-white/15 bg-black/20"
+      }`}
+    >
+      {card ? <DraggableCard card={card} size="pocket" /> : null}
+    </div>
+  );
+}
+
+function DraggableCard({
+  card,
+  size,
+}: {
+  card: CollectionCard;
+  size: "pocket" | "tray";
+}) {
+  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
+    id: card.id,
+  });
+  const inPocket = size === "pocket";
+  const showFoil = card.is_foil;
+  return (
+    <div
+      ref={setNodeRef}
       {...attributes}
-      {...(draggable ? listeners : {})}
-      className="group relative aspect-[5/7] rounded-md ring-1 ring-white/10 bg-black/30 shadow-md transition hover:scale-[1.03] hover:ring-violet-300/60 hover:shadow-glow"
+      {...listeners}
+      className={`group relative h-full w-full cursor-grab overflow-hidden rounded-md transition active:cursor-grabbing ${
+        inPocket
+          ? "shadow-md hover:scale-[1.04] hover:ring-2 hover:ring-violet-300/60 hover:shadow-glow"
+          : "aspect-[5/7] hover:scale-[1.04] hover:ring-2 hover:ring-violet-300/60"
+      } ${isDragging ? "opacity-30" : ""} ${showFoil ? "foil-card" : ""}`}
     >
       <Link
         href={`/cards/${card.scryfall_id}`}
-        className="block h-full w-full overflow-hidden rounded-md"
-        onClick={(e) => {
-          // Prevent navigation while a drag is in progress
-          if (isDragging) e.preventDefault();
-        }}
+        className="block h-full w-full"
+        onClick={(e) => isDragging && e.preventDefault()}
+        draggable={false}
       >
         {card.image_url ? (
           <Image
             src={card.image_url}
             alt={card.card_name}
             fill
-            sizes="(max-width: 640px) 50vw, 200px"
+            sizes={
+              inPocket
+                ? "(max-width: 640px) 30vw, 140px"
+                : "(max-width: 640px) 30vw, 110px"
+            }
             className="object-cover"
             draggable={false}
           />
         ) : (
-          <div className="grid h-full place-items-center px-2 text-center text-[11px] text-white/80">
+          <div className="grid h-full place-items-center px-1.5 text-center text-[10px] text-white/80">
             {card.card_name}
           </div>
         )}
       </Link>
       {/* Sleeve gloss */}
-      <div className="pointer-events-none absolute inset-0 rounded-md bg-gradient-to-br from-white/15 via-transparent to-transparent" />
-      {/* Corner gloss highlight */}
-      <div className="pointer-events-none absolute inset-x-0 top-0 h-1/4 rounded-t-md bg-gradient-to-b from-white/15 to-transparent" />
-      {card.quantity > 1 && (
-        <span className="absolute right-1 top-1 rounded-full bg-black/70 px-1.5 py-0.5 text-[10px] font-semibold text-white shadow-sm">
+      <div className="pointer-events-none absolute inset-0 rounded-md bg-gradient-to-br from-white/10 via-transparent to-transparent" />
+      {!inPocket && card.quantity > 1 && (
+        <span className="absolute right-1 top-1 z-[5] rounded-full bg-black/75 px-1.5 py-0.5 text-[10px] font-semibold text-white shadow-sm">
           ×{card.quantity}
+        </span>
+      )}
+      {showFoil && (
+        <span className="absolute left-1 top-1 z-[5] rounded-full bg-black/65 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-amber-200 shadow-sm">
+          Foil
         </span>
       )}
     </div>
   );
 }
 
-function EmptySleeve() {
-  const droppable = useDroppable({ id: `empty-${Math.random()}` });
+function DragPreview({ card }: { card: CollectionCard }) {
   return (
     <div
-      ref={droppable.setNodeRef}
-      className="aspect-[5/7] rounded-md border border-dashed border-white/15 bg-black/20"
-      aria-hidden
-    />
+      className={`relative aspect-[5/7] w-[140px] overflow-hidden rounded-md ring-2 ring-violet-300 shadow-glow ${
+        card.is_foil ? "foil-card" : ""
+      }`}
+    >
+      {card.image_url ? (
+        <Image
+          src={card.image_url}
+          alt={card.card_name}
+          fill
+          sizes="140px"
+          className="object-cover"
+        />
+      ) : (
+        <div className="grid h-full place-items-center px-2 text-center text-xs text-white">
+          {card.card_name}
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -551,16 +732,17 @@ function Pager({
   page,
   totalPages,
   onChange,
-  cardCount,
+  onAddPage,
+  onRemovePage,
 }: {
   page: number;
   totalPages: number;
   onChange: (p: number) => void;
-  cardCount: number;
+  onAddPage: () => void;
+  onRemovePage?: () => void;
 }) {
   return (
-    <div className="flex items-center justify-between gap-3 text-xs text-ink-400">
-      <span>{cardCount} cards</span>
+    <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-ink-400">
       <div className="flex items-center gap-2">
         <button
           type="button"
@@ -570,8 +752,8 @@ function Pager({
         >
           ← Prev
         </button>
-        <span className="px-2 text-ink-300">
-          Page {page + 1} of {totalPages}
+        <span className="px-1 text-ink-300">
+          Page {page + 1} / {totalPages}
         </span>
         <button
           type="button"
@@ -580,6 +762,26 @@ function Pager({
           className="btn-ghost px-3 py-1 disabled:cursor-not-allowed disabled:opacity-40"
         >
           Next →
+        </button>
+      </div>
+      <div className="flex items-center gap-2">
+        {onRemovePage && (
+          <button
+            type="button"
+            onClick={onRemovePage}
+            className="btn-subtle text-rose-300 hover:bg-rose-400/10"
+            title="Remove the last (empty) page"
+          >
+            − Page
+          </button>
+        )}
+        <button
+          type="button"
+          onClick={onAddPage}
+          disabled={totalPages >= MAX_BINDER_PAGES}
+          className="btn-subtle disabled:cursor-not-allowed disabled:opacity-40"
+        >
+          + Page
         </button>
       </div>
     </div>

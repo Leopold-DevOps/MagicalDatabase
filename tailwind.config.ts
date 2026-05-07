@@ -55,6 +55,8 @@ const config: Config = {
         "fade-in-up": "fade-in-up 0.35s ease-out both",
         shimmer: "shimmer 1.6s infinite",
         "twinkle-slow": "twinkle 6s ease-in-out infinite",
+        "foil-sweep": "foil-sweep 5s linear infinite",
+        "foil-shine": "foil-shine 5s ease-in-out infinite",
       },
       keyframes: {
         "fade-in-up": {
@@ -67,6 +69,14 @@ const config: Config = {
         twinkle: {
           "0%, 100%": { opacity: "0.35" },
           "50%": { opacity: "0.7" },
+        },
+        "foil-sweep": {
+          "0%": { backgroundPosition: "0% 50%" },
+          "100%": { backgroundPosition: "280% 50%" },
+        },
+        "foil-shine": {
+          "0%, 100%": { backgroundPosition: "-75% -75%" },
+          "50%": { backgroundPosition: "175% 175%" },
         },
       },
     },

@@ -119,6 +119,52 @@
     );
     animation: shimmer 1.6s infinite;
   }
+
+  .foil-card {
+    position: relative;
+    isolation: isolate;
+  }
+  .foil-card::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    border-radius: inherit;
+    background:
+      linear-gradient(
+        115deg,
+        transparent 18%,
+        rgba(255, 130, 220, 0.28) 32%,
+        rgba(140, 220, 255, 0.32) 42%,
+        rgba(255, 240, 130, 0.28) 52%,
+        rgba(190, 130, 255, 0.26) 62%,
+        rgba(140, 255, 200, 0.24) 72%,
+        transparent 88%
+      );
+    background-size: 280% 280%;
+    background-position: 0% 50%;
+    mix-blend-mode: screen;
+    animation: foil-sweep 5s linear infinite;
+    z-index: 2;
+  }
+  .foil-card::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    border-radius: inherit;
+    background: linear-gradient(
+      105deg,
+      transparent 42%,
+      rgba(255, 255, 255, 0.42) 50%,
+      transparent 58%
+    );
+    background-size: 200% 200%;
+    background-position: -75% -75%;
+    mix-blend-mode: overlay;
+    animation: foil-shine 5s ease-in-out infinite;
+    z-index: 3;
+  }
 }
 
 @layer utilities {

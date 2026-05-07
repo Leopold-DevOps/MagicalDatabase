@@ -63,13 +63,17 @@ export type BinderSettings = {
   pocketsPerPage: BinderLayout;
   style: BinderStyle;
   cover: BinderCover;
+  pageCount: number;
 };
 
 export const DEFAULT_BINDER_SETTINGS: BinderSettings = {
   pocketsPerPage: 9,
   style: "ring",
   cover: "arcane",
+  pageCount: 1,
 };
+
+export const MAX_BINDER_PAGES = 99;
 
 export function normalizeBinderSettings(input: unknown): BinderSettings {
   const safe =
@@ -91,7 +95,11 @@ export function normalizeBinderSettings(input: unknown): BinderSettings {
   )
     ? (safe.cover as BinderCover)
     : DEFAULT_BINDER_SETTINGS.cover;
-  return { pocketsPerPage: layout, style, cover };
+  const pageCount =
+    typeof safe.pageCount === "number" && safe.pageCount > 0
+      ? Math.min(MAX_BINDER_PAGES, Math.floor(safe.pageCount))
+      : DEFAULT_BINDER_SETTINGS.pageCount;
+  return { pocketsPerPage: layout, style, cover, pageCount };
 }
 
 export const SORT_OPTIONS = [

@@ -72,6 +72,9 @@ export type CollectionCard = {
   image_url: string | null;
   quantity: number;
   position: number | null;
+  page_index: number | null;
+  pocket_index: number | null;
+  is_foil: boolean;
   added_at: string;
 };
 

@@ -27,6 +27,7 @@ export function AddToCollectionForm({
 }) {
   const [collectionId, setCollectionId] = useState(collections[0]?.id ?? "");
   const [quantity, setQuantity] = useState(1);
+  const [foil, setFoil] = useState(false);
   const [feedback, setFeedback] = useState<
     { kind: "ok" | "error"; message: string } | null
   >(null);
@@ -44,7 +45,7 @@ export function AddToCollectionForm({
         const target = collections.find((c) => c.id === collectionId);
         setFeedback({
           kind: "ok",
-          message: `Added ×${quantity} to ${target?.name ?? "collection"}.`,
+          message: `Added ×${quantity}${foil ? " foil" : ""} to ${target?.name ?? "collection"}.`,
         });
       }
     });
@@ -64,6 +65,7 @@ export function AddToCollectionForm({
       <input type="hidden" name="set_code" value={setCode ?? ""} />
       <input type="hidden" name="set_name" value={setName ?? ""} />
       <input type="hidden" name="image_url" value={imageUrl ?? ""} />
+      <input type="hidden" name="is_foil" value={foil ? "true" : "false"} />
 
       <div className="flex flex-col gap-2 sm:flex-row">
         <select
@@ -99,6 +101,21 @@ export function AddToCollectionForm({
           {isPending ? "Adding…" : "Add"}
         </button>
       </div>
+
+      <label className="flex cursor-pointer items-center gap-2 text-xs text-ink-300">
+        <input
+          type="checkbox"
+          checked={foil}
+          onChange={(e) => setFoil(e.target.checked)}
+          className="h-3.5 w-3.5 rounded border-ink-700 bg-ink-950 accent-violet-500"
+        />
+        <span>
+          Foil{" "}
+          <span className="text-ink-500">
+            (tracked separately from non-foil copies)
+          </span>
+        </span>
+      </label>
 
       {feedback && (
         <p

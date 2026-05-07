@@ -51,14 +51,28 @@ create table if not exists public.collection_cards (
   image_url text,
   quantity int not null default 1 check (quantity > 0),
   position int,
+  page_index int,
+  pocket_index int,
+  is_foil boolean not null default false,
   added_at timestamptz not null default now()
 );
 alter table public.collection_cards
   add column if not exists position int;
+alter table public.collection_cards
+  add column if not exists page_index int;
+alter table public.collection_cards
+  add column if not exists pocket_index int;
+alter table public.collection_cards
+  add column if not exists is_foil boolean not null default false;
 create index if not exists collection_cards_collection_id_idx
   on public.collection_cards(collection_id);
 create index if not exists collection_cards_position_idx
   on public.collection_cards(collection_id, position);
+create index if not exists collection_cards_page_pocket_idx
+  on public.collection_cards(collection_id, page_index, pocket_index);
+create index if not exists collection_cards_tray_idx
+  on public.collection_cards(collection_id, scryfall_id, is_foil)
+  where page_index is null and pocket_index is null;
 
 -- RLS — every row scoped to the owning user
 alter table public.collections enable row level security;
