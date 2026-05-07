@@ -56,17 +56,35 @@ export async function updateCollection(formData: FormData): Promise<void> {
     : "arcane";
 
   if (!id) redirect("/collections");
-  if (!name) redirect(`/collections/${id}/edit?error=name`);
+  if (!name) redirect(`/collections/${id}/edit?error=${encodeURIComponent("Name is required.")}`);
   if (!COLLECTION_COLORS.includes(color))
-    redirect(`/collections/${id}/edit?error=color`);
+    redirect(`/collections/${id}/edit?error=${encodeURIComponent("Pick a valid color.")}`);
 
   const supabase = await supabaseServer();
-  const { error } = await supabase
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) redirect(`/auth/login?next=/collections/${id}/edit`);
+
+  const { data, error } = await supabase
     .from("collections")
     .update({ name, description, color })
-    .eq("id", id);
+    .eq("id", id)
+    .select()
+    .maybeSingle();
 
-  if (error) redirect(`/collections/${id}/edit?error=db`);
+  if (error) {
+    redirect(
+      `/collections/${id}/edit?error=${encodeURIComponent(error.message)}`,
+    );
+  }
+  if (!data) {
+    redirect(
+      `/collections/${id}/edit?error=${encodeURIComponent(
+        "No row updated. If you just added the color column, run supabase/migrations/0002_collection_color.sql in the Supabase SQL editor.",
+      )}`,
+    );
+  }
 
   revalidatePath("/collections");
   revalidatePath(`/collections/${id}`);

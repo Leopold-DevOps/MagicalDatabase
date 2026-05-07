@@ -13,12 +13,6 @@ import { updateCollection } from "../../actions";
 type Params = Promise<{ id: string }>;
 type Search = Promise<{ error?: string }>;
 
-const ERROR_MESSAGE: Record<string, string> = {
-  name: "Name is required.",
-  color: "Pick a valid color.",
-  db: "Couldn't save changes. Try again.",
-};
-
 export default async function EditCollectionPage({
   params,
   searchParams,
@@ -106,9 +100,9 @@ export default async function EditCollectionPage({
 
           <CollectionColorPicker defaultValue={defaultColor} />
 
-          {error && ERROR_MESSAGE[error] && (
+          {error && (
             <p className="rounded-md border border-rose-400/40 bg-rose-400/10 px-3 py-2 text-xs text-rose-300">
-              {ERROR_MESSAGE[error]}
+              {error}
             </p>
           )}
 
