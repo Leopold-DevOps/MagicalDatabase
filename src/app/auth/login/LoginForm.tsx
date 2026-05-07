@@ -56,6 +56,16 @@ export function LoginForm() {
         } else if (data.session) {
           router.push(next);
           router.refresh();
+        } else if (
+          data.user &&
+          Array.isArray(data.user.identities) &&
+          data.user.identities.length === 0
+        ) {
+          // Supabase returns this shape when the email already exists,
+          // to avoid leaking which emails are registered. Surface it.
+          setError(
+            "This email is already registered. Use Sign in (or Magic link if you don't know the password yet).",
+          );
         } else {
           setInfo(
             `Account created. Check ${email} to confirm, then sign in.`,
