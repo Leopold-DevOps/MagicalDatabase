@@ -2,12 +2,12 @@ import Link from "next/link";
 
 export default function NotFound() {
   return (
-    <div className="card-frame mx-auto max-w-md p-8 text-center">
-      <h1 className="font-display text-3xl text-arcane-100">Card not found</h1>
-      <p className="mt-2 text-sm text-arcane-200/80">
-        The scrying glass returned naught. Perhaps try a different name.
+    <div className="surface mx-auto max-w-md p-8 text-center">
+      <h1 className="font-display text-2xl text-ink-50">Card not found</h1>
+      <p className="mt-2 text-sm text-ink-400">
+        The scrying glass returned naught. Try a different name.
       </p>
-      <Link href="/cards" className="btn-arcane mt-6">
+      <Link href="/cards" className="btn-primary mt-6">
         Back to search
       </Link>
     </div>

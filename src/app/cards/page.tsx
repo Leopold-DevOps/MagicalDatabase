@@ -1,14 +1,9 @@
 import Link from "next/link";
-import Image from "next/image";
+import { Suspense } from "react";
+import { CardTile } from "@/components/CardTile";
 import { SearchBar } from "@/components/SearchBar";
-import {
-  ScryfallError,
-  searchCards,
-  smallImage,
-  type ScryfallCard,
-} from "@/lib/scryfall";
-
-export const dynamic = "force-dynamic";
+import { ResultsGridSkeleton } from "@/components/Skeleton";
+import { ScryfallError, searchCards } from "@/lib/scryfall";
 
 type SearchParams = Promise<{ q?: string; page?: string }>;
 
@@ -23,11 +18,11 @@ export default async function CardsPage({
 
   return (
     <div className="flex flex-col gap-8">
-      <div className="card-frame p-6">
-        <h1 className="font-display text-3xl text-arcane-100">Card search</h1>
-        <p className="mt-1 text-sm text-arcane-200/70">
-          Powered by Scryfall. Try simple names or full syntax like{" "}
-          <code className="rounded bg-midnight-900/70 px-1.5 py-0.5 text-arcane-200">
+      <div className="surface p-5">
+        <h1 className="font-display text-2xl text-ink-50">Card search</h1>
+        <p className="mt-1 text-sm text-ink-400">
+          Powered by Scryfall. Try{" "}
+          <code className="rounded bg-ink-900/80 px-1.5 py-0.5 text-xs text-ink-200">
             t:dragon c:r cmc&lt;=4
           </code>
           .
@@ -38,9 +33,14 @@ export default async function CardsPage({
       </div>
 
       {query ? (
-        <Results query={query} pageNum={pageNum} />
+        <Suspense
+          key={`${query}-${pageNum}`}
+          fallback={<ResultsGridSkeleton />}
+        >
+          <Results query={query} pageNum={pageNum} />
+        </Suspense>
       ) : (
-        <p className="text-center text-arcane-200/70">
+        <p className="py-12 text-center text-ink-500">
           Enter a query to begin your divination.
         </p>
       )}
@@ -53,22 +53,25 @@ async function Results({ query, pageNum }: { query: string; pageNum: number }) {
     const data = await searchCards(query, pageNum);
     if (!data.data.length) {
       return (
-        <p className="text-center text-arcane-200/70">No cards found.</p>
+        <p className="py-12 text-center text-ink-500">No cards found.</p>
       );
     }
 
     return (
       <div className="flex flex-col gap-6">
-        <p className="text-sm text-arcane-300/70">
-          {data.total_cards
-            ? `${data.total_cards.toLocaleString()} cards`
-            : `${data.data.length} cards`}
-          {" — page "}
-          {pageNum}
-        </p>
-        <ul className="grid grid-cols-2 gap-5 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
+        <div className="flex items-center justify-between text-xs text-ink-500">
+          <p>
+            {data.total_cards
+              ? `${data.total_cards.toLocaleString()} results`
+              : `${data.data.length} results`}
+          </p>
+          <p>page {pageNum}</p>
+        </div>
+        <ul className="stagger grid grid-cols-2 gap-5 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
           {data.data.map((c) => (
-            <CardTile key={c.id} card={c} />
+            <li key={c.id}>
+              <CardTile card={c} />
+            </li>
           ))}
         </ul>
         <Pager
@@ -82,51 +85,17 @@ async function Results({ query, pageNum }: { query: string; pageNum: number }) {
   } catch (err) {
     if (err instanceof ScryfallError && err.status === 404) {
       return (
-        <p className="text-center text-arcane-200/70">
-          No cards matched <span className="text-arcane-100">{query}</span>.
+        <p className="py-12 text-center text-ink-500">
+          No cards matched <span className="text-ink-200">{query}</span>.
         </p>
       );
     }
     return (
-      <p className="text-center text-rose-300">
-        The arcane channels failed: {(err as Error).message}
+      <p className="py-12 text-center text-rose-300">
+        Something went wrong: {(err as Error).message}
       </p>
     );
   }
-}
-
-function CardTile({ card }: { card: ScryfallCard }) {
-  const img = smallImage(card);
-  return (
-    <li>
-      <Link
-        href={`/cards/${card.id}`}
-        className="group block overflow-hidden rounded-2xl border border-arcane-800/60 bg-midnight-800/40 transition hover:border-arcane-400 hover:shadow-glow"
-      >
-        <div className="relative aspect-[5/7] w-full bg-midnight-900">
-          {img ? (
-            <Image
-              src={img}
-              alt={card.name}
-              fill
-              sizes="(max-width: 640px) 50vw, (max-width: 1024px) 25vw, 20vw"
-              className="object-cover transition group-hover:scale-[1.02]"
-            />
-          ) : (
-            <div className="grid h-full place-items-center text-arcane-300/70">
-              {card.name}
-            </div>
-          )}
-        </div>
-        <div className="px-3 py-2">
-          <p className="truncate text-sm text-arcane-100">{card.name}</p>
-          <p className="truncate text-xs text-arcane-300/70">
-            {card.set_name ?? card.set?.toUpperCase()}
-          </p>
-        </div>
-      </Link>
-    </li>
-  );
 }
 
 function Pager({
@@ -140,20 +109,23 @@ function Pager({
   hasMore: boolean;
   hasPrev: boolean;
 }) {
+  if (!hasPrev && !hasMore) return null;
   return (
     <div className="flex items-center justify-center gap-3 pt-2">
       {hasPrev ? (
         <Link
-          className="btn-arcane"
+          className="btn-ghost"
           href={`/cards?q=${encodeURIComponent(query)}&page=${pageNum - 1}`}
+          prefetch
         >
           ← Prev
         </Link>
       ) : null}
       {hasMore ? (
         <Link
-          className="btn-arcane"
+          className="btn-primary"
           href={`/cards?q=${encodeURIComponent(query)}&page=${pageNum + 1}`}
+          prefetch
         >
           Next →
         </Link>
