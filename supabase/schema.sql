@@ -16,9 +16,26 @@ create table if not exists public.collections (
   name text not null,
   type public.collection_type not null,
   description text,
+  color text not null default 'arcane'
+    check (color in ('arcane','ember','forest','tide','sun','shadow')),
   created_at timestamptz not null default now()
 );
 create index if not exists collections_user_id_idx on public.collections(user_id);
+
+-- if upgrading from an earlier schema, ensure the color column exists
+alter table public.collections
+  add column if not exists color text not null default 'arcane';
+do $$
+begin
+  if not exists (
+    select 1 from pg_constraint
+    where conname = 'collections_color_check'
+  ) then
+    alter table public.collections
+      add constraint collections_color_check
+      check (color in ('arcane','ember','forest','tide','sun','shadow'));
+  end if;
+end$$;
 
 -- cards inside a collection — references Scryfall by id
 create table if not exists public.collection_cards (

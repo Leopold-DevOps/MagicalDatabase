@@ -2,7 +2,13 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { COLLECTION_TYPES, type CollectionType } from "@/lib/collections";
+import {
+  COLLECTION_COLORS,
+  COLLECTION_TYPES,
+  isCollectionColor,
+  type CollectionColor,
+  type CollectionType,
+} from "@/lib/collections";
 import { supabaseServer } from "@/lib/supabase/server";
 
 function field(formData: FormData, key: string) {
@@ -14,6 +20,10 @@ export async function createCollection(formData: FormData): Promise<void> {
   const name = field(formData, "name");
   const type = field(formData, "type") as CollectionType;
   const description = field(formData, "description") || null;
+  const colorRaw = field(formData, "color") || "arcane";
+  const color: CollectionColor = isCollectionColor(colorRaw)
+    ? colorRaw
+    : "arcane";
 
   if (!name) redirect("/collections/new?error=name");
   if (!COLLECTION_TYPES.includes(type)) redirect("/collections/new?error=type");
@@ -26,7 +36,7 @@ export async function createCollection(formData: FormData): Promise<void> {
 
   const { data, error } = await supabase
     .from("collections")
-    .insert({ name, type, description, user_id: user.id })
+    .insert({ name, type, description, color, user_id: user.id })
     .select("id")
     .single();
 
@@ -34,6 +44,33 @@ export async function createCollection(formData: FormData): Promise<void> {
 
   revalidatePath("/collections");
   redirect(`/collections/${data!.id}`);
+}
+
+export async function updateCollection(formData: FormData): Promise<void> {
+  const id = field(formData, "id");
+  const name = field(formData, "name");
+  const description = field(formData, "description") || null;
+  const colorRaw = field(formData, "color") || "arcane";
+  const color: CollectionColor = isCollectionColor(colorRaw)
+    ? colorRaw
+    : "arcane";
+
+  if (!id) redirect("/collections");
+  if (!name) redirect(`/collections/${id}/edit?error=name`);
+  if (!COLLECTION_COLORS.includes(color))
+    redirect(`/collections/${id}/edit?error=color`);
+
+  const supabase = await supabaseServer();
+  const { error } = await supabase
+    .from("collections")
+    .update({ name, description, color })
+    .eq("id", id);
+
+  if (error) redirect(`/collections/${id}/edit?error=db`);
+
+  revalidatePath("/collections");
+  revalidatePath(`/collections/${id}`);
+  redirect(`/collections/${id}`);
 }
 
 export async function deleteCollection(formData: FormData): Promise<void> {

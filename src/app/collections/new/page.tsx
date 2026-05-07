@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { CollectionColorPicker } from "@/components/CollectionColorPicker";
 import {
   COLLECTION_TYPES,
   COLLECTION_TYPE_BLURB,
@@ -98,6 +99,8 @@ export default async function NewCollectionPage() {
               placeholder="Notes for future you."
             />
           </div>
+
+          <CollectionColorPicker />
 
           <div className="flex justify-end gap-2">
             <Link href="/collections" className="btn-ghost">

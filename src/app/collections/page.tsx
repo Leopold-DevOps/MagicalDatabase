@@ -1,8 +1,11 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import {
+  COLLECTION_COLOR_GRADIENT,
   COLLECTION_TYPE_LABEL,
+  isCollectionColor,
   type Collection,
+  type CollectionColor,
 } from "@/lib/collections";
 import { supabaseConfigured } from "@/lib/supabase/env";
 import { supabaseServer } from "@/lib/supabase/server";
@@ -80,27 +83,38 @@ function CollectionCard({ collection }: { collection: Collection }) {
       : collection.type === "deck"
         ? "chip-violet"
         : "chip-rose";
+  const color: CollectionColor = isCollectionColor(collection.color)
+    ? collection.color
+    : "arcane";
   return (
     <Link
       href={`/collections/${collection.id}`}
-      className="surface block p-5 transition hover:border-violet-400/40 hover:shadow-glow"
+      className="surface block overflow-hidden transition hover:border-violet-400/40 hover:shadow-glow"
     >
-      <div className="flex items-start justify-between gap-3">
-        <h2 className="text-base font-semibold text-ink-50">
-          {collection.name}
-        </h2>
-        <span className={chip}>{COLLECTION_TYPE_LABEL[collection.type]}</span>
-      </div>
-      {collection.description ? (
-        <p className="mt-2 line-clamp-2 text-sm text-ink-400">
-          {collection.description}
+      <div
+        className={`h-2 w-full bg-gradient-to-r ${COLLECTION_COLOR_GRADIENT[color]}`}
+        aria-hidden
+      />
+      <div className="p-5">
+        <div className="flex items-start justify-between gap-3">
+          <h2 className="text-base font-semibold text-ink-50">
+            {collection.name}
+          </h2>
+          <span className={chip}>
+            {COLLECTION_TYPE_LABEL[collection.type]}
+          </span>
+        </div>
+        {collection.description ? (
+          <p className="mt-2 line-clamp-2 text-sm text-ink-400">
+            {collection.description}
+          </p>
+        ) : (
+          <p className="mt-2 text-sm italic text-ink-500">No description</p>
+        )}
+        <p className="mt-3 text-xs text-ink-500">
+          Created {new Date(collection.created_at).toLocaleDateString()}
         </p>
-      ) : (
-        <p className="mt-2 text-sm italic text-ink-500">No description</p>
-      )}
-      <p className="mt-3 text-xs text-ink-500">
-        Created {new Date(collection.created_at).toLocaleDateString()}
-      </p>
+      </div>
     </Link>
   );
 }

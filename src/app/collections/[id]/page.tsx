@@ -2,10 +2,14 @@ import Image from "next/image";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import {
+  COLLECTION_COLOR_GRADIENT,
+  COLLECTION_COLOR_RING,
   COLLECTION_TYPE_BLURB,
   COLLECTION_TYPE_LABEL,
+  isCollectionColor,
   type Collection,
   type CollectionCard,
+  type CollectionColor,
 } from "@/lib/collections";
 import { supabaseConfigured } from "@/lib/supabase/env";
 import { supabaseServer } from "@/lib/supabase/server";
@@ -51,6 +55,7 @@ export default async function CollectionDetailPage({
       : c.type === "deck"
         ? "chip-violet"
         : "chip-rose";
+  const color: CollectionColor = isCollectionColor(c.color) ? c.color : "arcane";
 
   return (
     <div className="flex flex-col gap-8">
@@ -63,28 +68,45 @@ export default async function CollectionDetailPage({
         </Link>
       </div>
 
-      <header className="surface-glow p-6">
-        <div className="flex flex-wrap items-start justify-between gap-4">
+      <header
+        className={`surface relative overflow-hidden ${COLLECTION_COLOR_RING[color]}`}
+      >
+        <div
+          className={`absolute inset-x-0 top-0 h-32 bg-gradient-to-br opacity-80 ${COLLECTION_COLOR_GRADIENT[color]}`}
+          aria-hidden
+        />
+        <div
+          className="absolute inset-x-0 top-0 h-32 bg-gradient-to-b from-transparent to-ink-900/95"
+          aria-hidden
+        />
+        <div className="relative flex flex-wrap items-start justify-between gap-4 p-6 pt-24">
           <div>
             <span className={chip}>{COLLECTION_TYPE_LABEL[c.type]}</span>
-            <h1 className="mt-2 font-display text-3xl text-ink-50">{c.name}</h1>
-            <p className="mt-1 text-sm text-ink-400">
+            <h1 className="mt-2 font-display text-3xl text-ink-50 drop-shadow-[0_2px_8px_rgba(0,0,0,0.5)]">
+              {c.name}
+            </h1>
+            <p className="mt-1 text-sm text-ink-300">
               {c.description ?? COLLECTION_TYPE_BLURB[c.type]}
             </p>
-            <p className="mt-3 text-xs text-ink-500">
+            <p className="mt-3 text-xs text-ink-400">
               {items.length} unique · {totalQty} total · created{" "}
               {new Date(c.created_at).toLocaleDateString()}
             </p>
           </div>
-          <form action={deleteCollection}>
-            <input type="hidden" name="id" value={c.id} />
-            <button
-              type="submit"
-              className="btn-ghost text-rose-300 hover:border-rose-400/40"
-            >
-              Delete
-            </button>
-          </form>
+          <div className="flex items-center gap-2">
+            <Link href={`/collections/${c.id}/edit`} className="btn-ghost">
+              Edit
+            </Link>
+            <form action={deleteCollection}>
+              <input type="hidden" name="id" value={c.id} />
+              <button
+                type="submit"
+                className="btn-ghost text-rose-300 hover:border-rose-400/40"
+              >
+                Delete
+              </button>
+            </form>
+          </div>
         </div>
       </header>
 
