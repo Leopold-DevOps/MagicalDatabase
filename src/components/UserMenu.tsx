@@ -20,12 +20,13 @@ export async function UserMenu() {
   const label = user.email ?? user.id.slice(0, 6);
   return (
     <div className="flex items-center gap-3">
-      <span
-        className="hidden text-xs text-ink-400 md:inline"
-        title={user.email ?? undefined}
+      <Link
+        href="/account"
+        className="hidden text-xs text-ink-400 transition hover:text-white md:inline"
+        title="Account"
       >
         {label}
-      </span>
+      </Link>
       <form action="/auth/signout" method="post">
         <button type="submit" className="btn-subtle">
           Sign out

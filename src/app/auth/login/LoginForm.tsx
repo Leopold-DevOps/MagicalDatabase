@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { siteUrlBrowser } from "@/lib/site-url";
 import { supabaseBrowser } from "@/lib/supabase/browser";
 
-type Mode = "signin" | "signup" | "magic";
+type Mode = "signin" | "signup" | "magic" | "forgot";
 
 export function LoginForm() {
   const router = useRouter();
@@ -71,13 +71,24 @@ export function LoginForm() {
             `Account created. Check ${email} to confirm, then sign in.`,
           );
         }
-      } else {
+      } else if (mode === "magic") {
         const { error } = await supabase.auth.signInWithOtp({
           email,
           options: { emailRedirectTo: redirectTo },
         });
         if (error) setError(error.message);
         else setInfo(`Magic link sent to ${email}.`);
+      } else {
+        // forgot password
+        const recoveryRedirect = `${siteUrlBrowser()}/auth/callback?next=${encodeURIComponent("/auth/reset")}`;
+        const { error } = await supabase.auth.resetPasswordForEmail(email, {
+          redirectTo: recoveryRedirect,
+        });
+        if (error) setError(error.message);
+        else
+          setInfo(
+            `Password reset link sent to ${email}. Click the link to set a new password.`,
+          );
       }
     } catch (err) {
       setError((err as Error).message);
@@ -91,19 +102,26 @@ export function LoginForm() {
       ? "Welcome back"
       : mode === "signup"
         ? "Create account"
-        : "Magic link";
+        : mode === "magic"
+          ? "Magic link"
+          : "Reset password";
   const blurb =
     mode === "signin"
       ? "Sign in to your collections."
       : mode === "signup"
         ? "Start curating your multiverse."
-        : "We'll email you a one-tap sign-in link.";
+        : mode === "magic"
+          ? "We'll email you a one-tap link. Creates an account if you're new."
+          : "We'll email you a link to set a new password.";
   const cta =
     mode === "signin"
       ? "Sign in"
       : mode === "signup"
         ? "Create account"
-        : "Send link";
+        : mode === "magic"
+          ? "Send link"
+          : "Send reset link";
+  const showPassword = mode === "signin" || mode === "signup";
 
   return (
     <div className="mx-auto max-w-md">
@@ -153,14 +171,25 @@ export function LoginForm() {
             />
           </div>
 
-          {mode !== "magic" && (
+          {showPassword && (
             <div>
-              <label
-                htmlFor="password"
-                className="mb-1.5 block text-xs uppercase tracking-wider text-ink-400"
-              >
-                Password
-              </label>
+              <div className="mb-1.5 flex items-center justify-between">
+                <label
+                  htmlFor="password"
+                  className="block text-xs uppercase tracking-wider text-ink-400"
+                >
+                  Password
+                </label>
+                {mode === "signin" && (
+                  <button
+                    type="button"
+                    onClick={() => reset("forgot")}
+                    className="text-xs text-violet-300 transition hover:text-white"
+                  >
+                    Forgot password?
+                  </button>
+                )}
+              </div>
               <input
                 id="password"
                 type="password"
@@ -220,6 +249,18 @@ export function LoginForm() {
               className="text-violet-300 transition hover:text-white"
             >
               Sign in
+            </button>
+          </p>
+        )}
+        {mode === "forgot" && (
+          <p className="mt-4 text-center text-xs text-ink-500">
+            Remembered it?{" "}
+            <button
+              type="button"
+              onClick={() => reset("signin")}
+              className="text-violet-300 transition hover:text-white"
+            >
+              Back to sign in
             </button>
           </p>
         )}
