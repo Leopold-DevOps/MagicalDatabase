@@ -3,10 +3,12 @@ services:
     name: magical-database
     runtime: node
     plan: free
-    buildCommand: npm install && npm run build
+    buildCommand: npm ci --include=dev && npm run build
     startCommand: npm run start
     envVars:
       - key: NODE_VERSION
         value: 22.11.0
-      - key: NODE_ENV
-        value: production
+      - key: NPM_CONFIG_PRODUCTION
+        value: "false"
+      - key: NEXT_TELEMETRY_DISABLED
+        value: "1"
