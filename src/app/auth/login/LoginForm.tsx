@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { siteUrlBrowser } from "@/lib/site-url";
 import { supabaseBrowser } from "@/lib/supabase/browser";
 
 type Mode = "signin" | "signup" | "magic";
@@ -31,7 +32,7 @@ export function LoginForm() {
     setLoading(true);
     try {
       const supabase = supabaseBrowser();
-      const redirectTo = `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}`;
+      const redirectTo = `${siteUrlBrowser()}/auth/callback?next=${encodeURIComponent(next)}`;
 
       if (mode === "signin") {
         const { error } = await supabase.auth.signInWithPassword({
