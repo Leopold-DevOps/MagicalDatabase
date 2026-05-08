@@ -214,6 +214,15 @@ export function BinderView({
       const result = await moveCard(collectionId, id, target);
       if ("error" in result) {
         setCards(initialCards);
+      } else if (result.newId) {
+        // Replace the temporary __optimistic-${id} placeholder with the real
+        // server UUID so subsequent drags of the placed copy work correctly.
+        const optimisticId = `__optimistic-${id}`;
+        setCards((prev) =>
+          prev.map((c) =>
+            c.id === optimisticId ? { ...c, id: result.newId! } : c,
+          ),
+        );
       }
     });
   }

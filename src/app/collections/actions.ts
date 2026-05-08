@@ -247,7 +247,7 @@ export async function moveCard(
   collectionId: string,
   cardId: string,
   target: { type: "tray" } | { type: "pocket"; page: number; pocket: number },
-): Promise<{ ok: true } | { error: string }> {
+): Promise<{ ok: true; newId?: string } | { error: string }> {
   if (!collectionId || !cardId) return { error: "Missing args" };
 
   const supabase = await supabaseServer();
@@ -325,39 +325,50 @@ export async function moveCard(
     card.page_index === null && card.pocket_index === null;
 
   // Helper: actually place the dragged card. If it's a stack of >1 from the
-  // tray, split: decrement source, insert a new placed row with quantity 1.
-  async function placeDragged(targetPage: number, targetPocket: number) {
+  // tray, split: decrement source, insert a new placed row with quantity 1,
+  // and return the new row's real UUID so the client can reconcile its
+  // optimistic __optimistic-${id} placeholder.
+  async function placeDragged(
+    targetPage: number,
+    targetPocket: number,
+  ): Promise<{ err: string | null; newId?: string }> {
     if (draggedFromTray && (card.quantity ?? 1) > 1) {
       const u = await supabase
         .from("collection_cards")
         .update({ quantity: card.quantity - 1 })
         .eq("id", card.id);
-      if (u.error) return u.error;
-      const ins = await supabase.from("collection_cards").insert({
-        collection_id: collectionId,
-        scryfall_id: card.scryfall_id,
-        card_name: card.card_name,
-        set_code: card.set_code,
-        set_name: card.set_name,
-        image_url: card.image_url,
-        is_foil: card.is_foil,
-        quantity: 1,
-        page_index: targetPage,
-        pocket_index: targetPocket,
-      });
-      if (ins.error) return ins.error;
-      return null;
+      if (u.error) return { err: u.error.message };
+      const ins = await supabase
+        .from("collection_cards")
+        .insert({
+          collection_id: collectionId,
+          scryfall_id: card.scryfall_id,
+          card_name: card.card_name,
+          set_code: card.set_code,
+          set_name: card.set_name,
+          image_url: card.image_url,
+          is_foil: card.is_foil,
+          quantity: 1,
+          page_index: targetPage,
+          pocket_index: targetPocket,
+        })
+        .select("id")
+        .single();
+      if (ins.error) return { err: ins.error.message };
+      return { err: null, newId: ins.data.id };
     }
     const u = await supabase
       .from("collection_cards")
       .update({ page_index: targetPage, pocket_index: targetPocket })
       .eq("id", card.id);
-    return u.error;
+    return { err: u.error?.message ?? null };
   }
 
   if (!occupant) {
-    const e = await placeDragged(page, pocket);
-    if (e) return { error: e.message };
+    const { err, newId } = await placeDragged(page, pocket);
+    if (err) return { error: err };
+    revalidatePath(`/collections/${collectionId}`);
+    return { ok: true, newId };
   } else if (!draggedFromTray) {
     // Swap two placed cards. Park occupant on null first to avoid any
     // partial-uniqueness conflicts (no constraint today, but keeps semantics
@@ -379,6 +390,8 @@ export async function moveCard(
       .update({ page_index: oldPage, pocket_index: oldPocket })
       .eq("id", occupant.id);
     if (moveOccupant.error) return { error: moveOccupant.error.message };
+    revalidatePath(`/collections/${collectionId}`);
+    return { ok: true };
   } else {
     // Dragged from tray onto an occupied pocket → bump occupant to tray, then place.
     // Bump first (recursive-style call inlined).
@@ -412,10 +425,9 @@ export async function moveCard(
         .eq("id", occupant.id);
       if (u.error) return { error: u.error.message };
     }
-    const e = await placeDragged(page, pocket);
-    if (e) return { error: e.message };
+    const { err, newId } = await placeDragged(page, pocket);
+    if (err) return { error: err };
+    revalidatePath(`/collections/${collectionId}`);
+    return { ok: true, newId };
   }
-
-  revalidatePath(`/collections/${collectionId}`);
-  return { ok: true };
 }
