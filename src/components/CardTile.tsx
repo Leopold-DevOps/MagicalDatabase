@@ -1,5 +1,9 @@
 import Image from "next/image";
 import Link from "next/link";
+import {
+  QuickAddButton,
+  type QuickAddCollection,
+} from "@/components/QuickAddButton";
 import type { ScryfallCard } from "@/lib/scryfall";
 
 function tileImage(card: ScryfallCard): string | undefined {
@@ -11,37 +15,58 @@ function tileImage(card: ScryfallCard): string | undefined {
   );
 }
 
-export function CardTile({ card }: { card: ScryfallCard }) {
+export function CardTile({
+  card,
+  collections,
+  isSignedIn,
+}: {
+  card: ScryfallCard;
+  collections: QuickAddCollection[];
+  isSignedIn: boolean;
+}) {
   const img = tileImage(card);
   return (
-    <Link
-      href={`/cards/${card.id}`}
-      prefetch
-      className="group block overflow-hidden rounded-xl border border-ink-800/70 bg-ink-900/40 transition duration-200 hover:-translate-y-0.5 hover:border-violet-500/50 hover:shadow-soft"
-    >
-      <div className="relative aspect-[5/7] w-full overflow-hidden bg-ink-950">
-        {img ? (
-          <Image
-            src={img}
-            alt={card.name}
-            fill
-            sizes="(max-width: 640px) 50vw, (max-width: 768px) 33vw, (max-width: 1024px) 25vw, 220px"
-            className="object-cover transition duration-300 group-hover:scale-[1.03]"
-          />
-        ) : (
-          <div className="grid h-full place-items-center px-3 text-center text-sm text-ink-400">
+    <div className="group relative">
+      <Link
+        href={`/cards/${card.id}`}
+        prefetch
+        className="block overflow-hidden rounded-xl border border-ink-800/70 bg-ink-900/40 transition duration-200 hover:-translate-y-0.5 hover:border-violet-500/50 hover:shadow-soft"
+      >
+        <div className="relative aspect-[5/7] w-full overflow-hidden bg-ink-950">
+          {img ? (
+            <Image
+              src={img}
+              alt={card.name}
+              fill
+              sizes="(max-width: 640px) 50vw, (max-width: 768px) 33vw, (max-width: 1024px) 25vw, 220px"
+              className="object-cover transition duration-300 group-hover:scale-[1.03]"
+            />
+          ) : (
+            <div className="grid h-full place-items-center px-3 text-center text-sm text-ink-400">
+              {card.name}
+            </div>
+          )}
+        </div>
+        <div className="px-3 py-2.5">
+          <p className="truncate text-sm font-medium text-ink-100">
             {card.name}
-          </div>
-        )}
-      </div>
-      <div className="px-3 py-2.5">
-        <p className="truncate text-sm font-medium text-ink-100">
-          {card.name}
-        </p>
-        <p className="truncate text-xs text-ink-500">
-          {card.set_name ?? card.set?.toUpperCase()}
-        </p>
-      </div>
-    </Link>
+          </p>
+          <p className="truncate text-xs text-ink-500">
+            {card.set_name ?? card.set?.toUpperCase()}
+          </p>
+        </div>
+      </Link>
+      <QuickAddButton
+        card={{
+          scryfall_id: card.id,
+          name: card.name,
+          set_code: card.set ?? null,
+          set_name: card.set_name ?? null,
+          image_url: img ?? null,
+        }}
+        collections={collections}
+        isSignedIn={isSignedIn}
+      />
+    </div>
   );
 }
