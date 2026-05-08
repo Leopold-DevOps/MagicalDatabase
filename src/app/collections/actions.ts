@@ -169,7 +169,7 @@ export async function removeCardFromCollection(
 export async function updateBinderSettings(
   collectionId: string,
   settings: unknown,
-): Promise<{ ok: true } | { error: string }> {
+): Promise<{ ok: true; movedToTray: number } | { error: string }> {
   if (!collectionId) return { error: "Missing collection" };
 
   const supabase = await supabaseServer();
@@ -179,6 +179,55 @@ export async function updateBinderSettings(
   if (!user) return { error: "Not signed in" };
 
   const normalized = normalizeBinderSettings(settings);
+
+  // If the user is shrinking pocketsPerPage, sweep cards that no longer fit
+  // (pocket_index >= newPocketsPerPage) back to the tray so they don't get
+  // orphaned in pockets that don't exist in the new layout.
+  let movedToTray = 0;
+  const { data: overflow } = await supabase
+    .from("collection_cards")
+    .select("*")
+    .eq("collection_id", collectionId)
+    .gte("pocket_index", normalized.pocketsPerPage);
+
+  if (overflow && overflow.length > 0) {
+    for (const card of overflow) {
+      const { data: trayStack } = await supabase
+        .from("collection_cards")
+        .select("id, quantity")
+        .eq("collection_id", collectionId)
+        .eq("scryfall_id", card.scryfall_id)
+        .eq("is_foil", card.is_foil)
+        .is("page_index", null)
+        .is("pocket_index", null)
+        .neq("id", card.id)
+        .limit(1)
+        .maybeSingle();
+
+      if (trayStack) {
+        const u = await supabase
+          .from("collection_cards")
+          .update({
+            quantity: (trayStack.quantity ?? 0) + (card.quantity ?? 1),
+          })
+          .eq("id", trayStack.id);
+        if (u.error) return { error: u.error.message };
+        const d = await supabase
+          .from("collection_cards")
+          .delete()
+          .eq("id", card.id);
+        if (d.error) return { error: d.error.message };
+      } else {
+        const u = await supabase
+          .from("collection_cards")
+          .update({ page_index: null, pocket_index: null })
+          .eq("id", card.id);
+        if (u.error) return { error: u.error.message };
+      }
+      movedToTray++;
+    }
+  }
+
   const { error } = await supabase
     .from("collections")
     .update({ binder_settings: normalized })
@@ -186,7 +235,7 @@ export async function updateBinderSettings(
 
   if (error) return { error: error.message };
   revalidatePath(`/collections/${collectionId}`);
-  return { ok: true };
+  return { ok: true, movedToTray };
 }
 
 /**

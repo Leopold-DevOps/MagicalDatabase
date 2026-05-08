@@ -61,6 +61,7 @@ export function BinderView({
   const [setFilter, setSetFilter] = useState<string | null>(null);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [showSettings, setShowSettings] = useState(false);
+  const [notice, setNotice] = useState<string | null>(null);
   const [, startTransition] = useTransition();
 
   const sensors = useSensors(
@@ -117,9 +118,51 @@ export function BinderView({
 
   function persistSettings(next: BinderSettings) {
     setSettings(next);
+
+    // Optimistically sweep overflow cards into the tray when shrinking.
+    if (next.pocketsPerPage < settings.pocketsPerPage) {
+      const overflow = cards.filter(
+        (c) =>
+          c.pocket_index !== null && c.pocket_index >= next.pocketsPerPage,
+      );
+      if (overflow.length > 0) {
+        const ids = new Set(overflow.map((c) => c.id));
+        const remaining = cards.filter((c) => !ids.has(c.id));
+        const merged: CollectionCard[] = [...remaining];
+        for (const card of overflow) {
+          const existing = merged.find(
+            (c) =>
+              c.page_index === null &&
+              c.pocket_index === null &&
+              c.scryfall_id === card.scryfall_id &&
+              c.is_foil === card.is_foil,
+          );
+          if (existing) {
+            existing.quantity =
+              (existing.quantity ?? 0) + (card.quantity ?? 1);
+          } else {
+            merged.push({
+              ...card,
+              page_index: null,
+              pocket_index: null,
+            });
+          }
+        }
+        setCards(merged);
+      }
+    }
+
     startTransition(async () => {
       const result = await updateBinderSettings(collectionId, next);
-      if ("error" in result) setSettings(initialSettings);
+      if ("error" in result) {
+        setSettings(initialSettings);
+        setCards(initialCards);
+        setNotice(`Couldn't save: ${result.error}`);
+      } else if (result.movedToTray > 0) {
+        setNotice(
+          `Moved ${result.movedToTray} card${result.movedToTray === 1 ? "" : "s"} to the tray (no pocket in the new layout).`,
+        );
+      }
     });
   }
 
@@ -191,6 +234,20 @@ export function BinderView({
 
       {showSettings && (
         <SettingsPanel settings={settings} onChange={persistSettings} />
+      )}
+
+      {notice && (
+        <div className="surface flex items-start justify-between gap-3 border-violet-400/40 bg-violet-500/10 p-3 text-xs text-violet-100 animate-fade-in-up">
+          <span>{notice}</span>
+          <button
+            type="button"
+            onClick={() => setNotice(null)}
+            className="text-violet-300 transition hover:text-white"
+            aria-label="Dismiss"
+          >
+            ×
+          </button>
+        </div>
       )}
 
       <DndContext
