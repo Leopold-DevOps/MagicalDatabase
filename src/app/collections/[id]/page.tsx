@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { Suspense } from "react";
+import { AddCardsPanel } from "@/components/AddCardsPanel";
 import { CollectionDetailView } from "@/components/CollectionDetailView";
 import {
   CollectionValue,
@@ -129,6 +130,8 @@ export default async function CollectionDetailPage({
           <ManaCurve cards={items} />
         </Suspense>
       )}
+
+      <AddCardsPanel collectionId={c.id} />
 
       <CollectionDetailView
         collectionId={c.id}
