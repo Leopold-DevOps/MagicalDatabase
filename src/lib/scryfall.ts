@@ -95,6 +95,41 @@ export async function getCard(id: string): Promise<ScryfallCard> {
   return scryfallFetch<ScryfallCard>(`/cards/${encodeURIComponent(id)}`);
 }
 
+/**
+ * Bulk-resolve cards by Scryfall ID. Scryfall caps the collection endpoint at
+ * 75 identifiers per request, so we chunk and concatenate. Cards that aren't
+ * found are silently skipped (Scryfall returns them in a `not_found` array we
+ * don't surface here).
+ */
+export async function getCardsByIds(ids: string[]): Promise<ScryfallCard[]> {
+  if (ids.length === 0) return [];
+  const chunks: string[][] = [];
+  for (let i = 0; i < ids.length; i += 75) chunks.push(ids.slice(i, i + 75));
+
+  const all: ScryfallCard[] = [];
+  for (const chunk of chunks) {
+    const res = await fetch(`${BASE}/cards/collection`, {
+      method: "POST",
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+        "User-Agent":
+          "MagicalDatabase/0.1 (https://github.com/Leopold-DevOps/magicaldatabase)",
+      },
+      body: JSON.stringify({
+        identifiers: chunk.map((id) => ({ id })),
+      }),
+      next: { revalidate: 60 * 60 },
+    });
+    if (!res.ok) {
+      throw new ScryfallError(res.status, res.statusText);
+    }
+    const data = (await res.json()) as { data: ScryfallCard[] };
+    all.push(...data.data);
+  }
+  return all;
+}
+
 export async function getPrints(
   card: ScryfallCard,
 ): Promise<ScryfallCard[]> {

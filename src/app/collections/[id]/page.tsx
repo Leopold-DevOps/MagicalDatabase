@@ -1,6 +1,11 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
+import { Suspense } from "react";
 import { CollectionDetailView } from "@/components/CollectionDetailView";
+import {
+  CollectionValue,
+  CollectionValueSkeleton,
+} from "@/components/CollectionValue";
 import {
   COLLECTION_COLOR_GRADIENT,
   COLLECTION_COLOR_RING,
@@ -95,6 +100,11 @@ export default async function CollectionDetailPage({
               {items.length} unique · {totalQty} total · created{" "}
               {new Date(c.created_at).toLocaleDateString()}
             </p>
+            <div className="mt-1">
+              <Suspense fallback={<CollectionValueSkeleton />}>
+                <CollectionValue cards={items} />
+              </Suspense>
+            </div>
           </div>
           <div className="flex items-center gap-2">
             <Link href={`/collections/${c.id}/edit`} className="btn-ghost">
