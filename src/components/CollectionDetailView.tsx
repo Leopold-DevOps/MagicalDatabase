@@ -24,39 +24,42 @@ export function CollectionDetailView({
   cards: CollectionCard[];
   rawSettings: unknown;
 }) {
+  const isBinder = type === "binder";
   const settings: BinderSettings = normalizeBinderSettings(rawSettings);
-  const [view, setView] = useState<ViewMode>(
-    type === "binder" ? "binder" : "grid",
-  );
+  const [view, setView] = useState<ViewMode>(isBinder ? "binder" : "grid");
 
   return (
     <div className="flex flex-col gap-4">
       <div className="flex items-center gap-2 text-xs">
-        <ViewTab
-          active={view === "grid"}
-          onClick={() => setView("grid")}
-        >
-          Grid
-        </ViewTab>
-        <ViewTab
-          active={view === "binder"}
-          onClick={() => setView("binder")}
-        >
-          Binder
-        </ViewTab>
+        {isBinder && (
+          <>
+            <ViewTab
+              active={view === "grid"}
+              onClick={() => setView("grid")}
+            >
+              Grid
+            </ViewTab>
+            <ViewTab
+              active={view === "binder"}
+              onClick={() => setView("binder")}
+            >
+              Binder
+            </ViewTab>
+          </>
+        )}
         <span className="ml-auto text-ink-500">
           {cards.length} {cards.length === 1 ? "card" : "cards"}
         </span>
       </div>
 
-      {view === "grid" ? (
-        <GridView cards={cards} />
-      ) : (
+      {isBinder && view === "binder" ? (
         <BinderView
           collectionId={collectionId}
           initialCards={cards}
           initialSettings={settings}
         />
+      ) : (
+        <GridView cards={cards} />
       )}
     </div>
   );
