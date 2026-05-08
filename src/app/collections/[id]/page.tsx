@@ -6,6 +6,7 @@ import {
   CollectionValue,
   CollectionValueSkeleton,
 } from "@/components/CollectionValue";
+import { ManaCurve, ManaCurveSkeleton } from "@/components/ManaCurve";
 import {
   COLLECTION_COLOR_GRADIENT,
   COLLECTION_COLOR_RING,
@@ -122,6 +123,12 @@ export default async function CollectionDetailPage({
           </div>
         </div>
       </header>
+
+      {c.type === "deck" && (
+        <Suspense fallback={<ManaCurveSkeleton />}>
+          <ManaCurve cards={items} />
+        </Suspense>
+      )}
 
       <CollectionDetailView
         collectionId={c.id}
