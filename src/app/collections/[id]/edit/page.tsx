@@ -86,116 +86,122 @@ export default async function EditCollectionPage({
         </Link>
       </div>
 
-      <div className="surface-glow p-6">
-        <h1 className="font-display text-2xl text-ink-50">
-          Edit collection
-        </h1>
-        <p className="mt-1 text-sm text-ink-400">
-          {COLLECTION_TYPE_LABEL[c.type]} · type can&apos;t be changed.
-        </p>
+      <div className="flex flex-col gap-6">
+        <div className="surface-glow p-6">
+          <h1 className="font-display text-2xl text-ink-50">
+            Edit collection
+          </h1>
+          <p className="mt-1 text-sm text-ink-400">
+            {COLLECTION_TYPE_LABEL[c.type]} · type can&apos;t be changed.
+          </p>
 
-        <form action={updateCollection} className="mt-6 space-y-5">
-          <input type="hidden" name="id" value={c.id} />
+          <form action={updateCollection} className="mt-6 flex flex-col gap-6">
+            <input type="hidden" name="id" value={c.id} />
 
-          <div>
-            <label
-              htmlFor="name"
-              className="mb-1.5 block text-xs uppercase tracking-wider text-ink-400"
-            >
-              Name
-            </label>
-            <input
-              id="name"
-              name="name"
-              required
-              maxLength={120}
-              defaultValue={c.name}
-              className="input-field"
-            />
-          </div>
-
-          <div>
-            <label
-              htmlFor="description"
-              className="mb-1.5 block text-xs uppercase tracking-wider text-ink-400"
-            >
-              Description <span className="text-ink-600">(optional)</span>
-            </label>
-            <textarea
-              id="description"
-              name="description"
-              rows={3}
-              maxLength={500}
-              defaultValue={c.description ?? ""}
-              className="input-field resize-none"
-              placeholder="Notes for future you."
-            />
-          </div>
-
-          <CollectionColorPicker defaultValue={defaultColor} />
-
-          <div>
-            <label
-              htmlFor="folder_id"
-              className="mb-1.5 block text-xs uppercase tracking-wider text-ink-400"
-            >
-              Folder <span className="text-ink-600">(optional)</span>
-            </label>
-            <select
-              id="folder_id"
-              name="folder_id"
-              defaultValue={c.folder_id ?? ""}
-              className="input-field"
-            >
-              <option value="">None</option>
-              {topLevel.map((f) => (
-                <FolderOptions
-                  key={f.id}
-                  folder={f}
-                  children={childrenByParent.get(f.id) ?? []}
+            <Section title="Details" hint="Name and notes for this collection.">
+              <div>
+                <label
+                  htmlFor="name"
+                  className="mb-1.5 block text-xs uppercase tracking-wider text-ink-400"
+                >
+                  Name
+                </label>
+                <input
+                  id="name"
+                  name="name"
+                  required
+                  maxLength={120}
+                  defaultValue={c.name}
+                  className="input-field"
                 />
-              ))}
-            </select>
-          </div>
+              </div>
 
-          {error && (
-            <p className="rounded-md border border-rose-400/40 bg-rose-400/10 px-3 py-2 text-xs text-rose-300">
-              {error}
-            </p>
-          )}
+              <div className="mt-4">
+                <label
+                  htmlFor="description"
+                  className="mb-1.5 block text-xs uppercase tracking-wider text-ink-400"
+                >
+                  Description <span className="text-ink-600">(optional)</span>
+                </label>
+                <textarea
+                  id="description"
+                  name="description"
+                  rows={3}
+                  maxLength={500}
+                  defaultValue={c.description ?? ""}
+                  className="input-field resize-none"
+                  placeholder="Notes for future you."
+                />
+              </div>
+            </Section>
 
-          <div className="flex justify-end gap-2">
-            <Link href={`/collections/${c.id}`} className="btn-ghost">
-              Cancel
-            </Link>
-            <button type="submit" className="btn-primary">
-              Save changes
-            </button>
-          </div>
-        </form>
+            <Section
+              title="Appearance"
+              hint="The accent colour used in the banner and tile."
+            >
+              <CollectionColorPicker defaultValue={defaultColor} />
+            </Section>
 
-        {/* Visibility + Cover live outside the form because they save
-            immediately via their own server actions and shouldn't be tied
-            to the form submit. */}
-        <div className="mt-6 border-t border-ink-800/60 pt-5">
-          <VisibilityToggle
-            collectionId={c.id}
-            initial={c.is_public}
-            hasUsername={hasUsername}
-          />
+            <Section
+              title="Organisation"
+              hint="Group this collection into one of your folders."
+            >
+              <select
+                id="folder_id"
+                name="folder_id"
+                defaultValue={c.folder_id ?? ""}
+                className="input-field"
+              >
+                <option value="">None</option>
+                {topLevel.map((f) => (
+                  <FolderOptions
+                    key={f.id}
+                    folder={f}
+                    children={childrenByParent.get(f.id) ?? []}
+                  />
+                ))}
+              </select>
+            </Section>
+
+            {error && (
+              <p className="rounded-md border border-rose-400/40 bg-rose-400/10 px-3 py-2 text-xs text-rose-300">
+                {error}
+              </p>
+            )}
+
+            <div className="flex justify-end gap-2">
+              <Link href={`/collections/${c.id}`} className="btn-ghost">
+                Cancel
+              </Link>
+              <button type="submit" className="btn-primary">
+                Save changes
+              </button>
+            </div>
+          </form>
         </div>
 
-        <div className="mt-5 border-t border-ink-800/60 pt-5">
+        {/* Visibility and Cover save immediately via their own server
+            actions, so they sit in their own panels below the main form. */}
+        <div className="surface p-6">
+          <SectionHeader
+            title="Visibility"
+            hint="Decide who can see this collection."
+          />
+          <div className="mt-4">
+            <VisibilityToggle
+              collectionId={c.id}
+              initial={c.is_public}
+              hasUsername={hasUsername}
+            />
+          </div>
+        </div>
+
+        <div className="surface p-6">
           <div className="flex flex-wrap items-start justify-between gap-3">
-            <div>
-              <p className="text-xs uppercase tracking-wider text-ink-400">
-                Cover image
-              </p>
-              <p className="mt-1 text-xs text-ink-500">
-                Pick a card from this collection — its artwork becomes the
-                banner on the detail page and the index tile.
-              </p>
-            </div>
+            <SectionHeader
+              title="Cover image"
+              hint="Pick a card from this collection — its artwork becomes the banner on the detail page and the index tile."
+            />
             <CoverPicker
               collectionId={c.id}
               cards={cards}
@@ -204,9 +210,9 @@ export default async function EditCollectionPage({
             />
           </div>
           {c.cover_image_url && (
-            <div className="mt-3 overflow-hidden rounded-md ring-1 ring-ink-800/70">
+            <div className="mt-4 overflow-hidden rounded-md ring-1 ring-ink-800/70">
               <div
-                className="h-24 w-full bg-cover bg-center"
+                className="h-28 w-full bg-cover bg-center"
                 style={{ backgroundImage: `url(${c.cover_image_url})` }}
                 aria-hidden
               />
@@ -234,5 +240,38 @@ function FolderOptions({
         </option>
       ))}
     </>
+  );
+}
+
+function Section({
+  title,
+  hint,
+  children,
+}: {
+  title: string;
+  hint?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <section>
+      <SectionHeader title={title} hint={hint} />
+      <div className="mt-3">{children}</div>
+      <div className="gold-rule mt-6" />
+    </section>
+  );
+}
+
+function SectionHeader({
+  title,
+  hint,
+}: {
+  title: string;
+  hint?: string;
+}) {
+  return (
+    <div>
+      <h2 className="font-display text-base text-ink-50">{title}</h2>
+      {hint && <p className="mt-0.5 text-xs text-ink-500">{hint}</p>}
+    </div>
   );
 }

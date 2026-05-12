@@ -283,47 +283,15 @@ function FolderTile({
           : "hover:border-gold-400/50"
       }`}
     >
-      <Link
-        href={`/collections?folder=${folder.id}`}
-        className="absolute inset-0 z-0"
-        aria-label={`Open folder ${folder.name}`}
-      />
-      <div className="relative z-10 flex h-full flex-col p-5">
-        <div className="flex items-start justify-between">
-          <span
-            aria-hidden
-            className="text-3xl leading-none text-gold-300 drop-shadow"
-          >
-            📁
-          </span>
-          <div className="flex items-center gap-1">
-            <button
-              type="button"
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                setRenaming(true);
-              }}
-              className="btn-subtle text-[11px]"
-            >
-              Rename
-            </button>
-            <button
-              type="button"
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                remove();
-              }}
-              disabled={isPending}
-              className="btn-subtle text-[11px] text-rose-300 hover:bg-rose-400/10 disabled:opacity-50"
-            >
-              Delete
-            </button>
+      {renaming ? (
+        // While renaming we replace the Link wrapper so the input keeps
+        // keyboard focus and Enter doesn't navigate.
+        <div className="flex h-full flex-col p-5">
+          <div className="flex items-start justify-between">
+            <span aria-hidden className="text-3xl leading-none text-gold-300">
+              📁
+            </span>
           </div>
-        </div>
-
-        {renaming ? (
           <div className="mt-auto flex items-center gap-2">
             <input
               autoFocus
@@ -348,12 +316,53 @@ function FolderTile({
               Save
             </button>
           </div>
-        ) : (
-          <p className="mt-auto text-lg font-semibold text-ink-50">
-            {folder.name}
-          </p>
-        )}
-      </div>
+        </div>
+      ) : (
+        <Link
+          href={`/collections?folder=${folder.id}`}
+          className="block h-full"
+          aria-label={`Open folder ${folder.name}`}
+        >
+          <div className="flex h-full flex-col p-5">
+            <div className="flex items-start justify-between">
+              <span
+                aria-hidden
+                className="text-3xl leading-none text-gold-300 drop-shadow"
+              >
+                📁
+              </span>
+              <div className="flex items-center gap-1">
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    setRenaming(true);
+                  }}
+                  className="btn-subtle text-[11px]"
+                >
+                  Rename
+                </button>
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    remove();
+                  }}
+                  disabled={isPending}
+                  className="btn-subtle text-[11px] text-rose-300 hover:bg-rose-400/10 disabled:opacity-50"
+                >
+                  Delete
+                </button>
+              </div>
+            </div>
+            <p className="mt-auto text-lg font-semibold text-ink-50">
+              {folder.name}
+            </p>
+          </div>
+        </Link>
+      )}
     </div>
   );
 }
@@ -383,11 +392,11 @@ function CollectionTile({ collection }: { collection: Collection }) {
         isDragging ? "opacity-40" : ""
       }`}
     >
-      <Link
-        href={`/collections/${collection.id}`}
-        className="block h-full"
-        onPointerDown={(e) => e.stopPropagation()}
-      >
+      {/* PointerSensor has a 6 px activation threshold, so a stationary
+          click here propagates up unhandled and the Link fires as a
+          normal navigation; a >6 px drag is picked up by dnd-kit and the
+          click is suppressed. No stopPropagation needed. */}
+      <Link href={`/collections/${collection.id}`} className="block h-full">
         {cover ? (
           <div className="relative h-20 w-full overflow-hidden">
             <div
