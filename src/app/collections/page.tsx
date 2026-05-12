@@ -86,15 +86,34 @@ function CollectionCard({ collection }: { collection: Collection }) {
   const color: CollectionColor = isCollectionColor(collection.color)
     ? collection.color
     : "arcane";
+  const cover = collection.cover_image_url;
   return (
     <Link
       href={`/collections/${collection.id}`}
-      className="surface block overflow-hidden transition hover:border-violet-400/40 hover:shadow-glow"
+      className="surface group block overflow-hidden transition hover:border-violet-400/40 hover:shadow-glow"
     >
-      <div
-        className={`h-2 w-full bg-gradient-to-r ${COLLECTION_COLOR_GRADIENT[color]}`}
-        aria-hidden
-      />
+      {cover ? (
+        <div className="relative h-28 w-full overflow-hidden">
+          <div
+            className="absolute inset-0 bg-cover bg-center transition duration-500 group-hover:scale-[1.04]"
+            style={{ backgroundImage: `url(${cover})` }}
+            aria-hidden
+          />
+          <div
+            className={`absolute inset-0 bg-gradient-to-br opacity-50 mix-blend-overlay ${COLLECTION_COLOR_GRADIENT[color]}`}
+            aria-hidden
+          />
+          <div
+            className="absolute inset-0 bg-gradient-to-b from-ink-950/30 to-ink-950/80"
+            aria-hidden
+          />
+        </div>
+      ) : (
+        <div
+          className={`h-2 w-full bg-gradient-to-r ${COLLECTION_COLOR_GRADIENT[color]}`}
+          aria-hidden
+        />
+      )}
       <div className="p-5">
         <div className="flex items-start justify-between gap-3">
           <h2 className="text-base font-semibold text-ink-50">

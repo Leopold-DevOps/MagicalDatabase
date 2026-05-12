@@ -60,6 +60,8 @@ export type Collection = {
   color: CollectionColor;
   binder_settings: Record<string, unknown> | null;
   deck_format: string | null;
+  cover_scryfall_id: string | null;
+  cover_image_url: string | null;
   created_at: string;
 };
 

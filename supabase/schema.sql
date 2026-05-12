@@ -68,6 +68,10 @@ alter table public.collection_cards
   add column if not exists is_commander boolean not null default false;
 alter table public.collections
   add column if not exists deck_format text not null default 'casual';
+alter table public.collections
+  add column if not exists cover_scryfall_id text;
+alter table public.collections
+  add column if not exists cover_image_url text;
 create index if not exists collection_cards_collection_id_idx
   on public.collection_cards(collection_id);
 create index if not exists collection_cards_commander_idx

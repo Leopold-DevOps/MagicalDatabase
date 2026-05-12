@@ -499,6 +499,57 @@ export async function setCommander(
   return { ok: true };
 }
 
+/**
+ * Set or clear the cover image for a collection. The chosen card must
+ * still exist in the collection — we look it up by id+collection_id and
+ * copy its scryfall_id + image_url onto the collection row. Pass null
+ * to clear.
+ */
+export async function setCollectionCover(
+  collectionId: string,
+  cardId: string | null,
+): Promise<{ ok: true } | { error: string }> {
+  if (!collectionId) return { error: "Missing collection" };
+
+  const supabase = await supabaseServer();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "Not signed in" };
+
+  if (cardId === null) {
+    const { error } = await supabase
+      .from("collections")
+      .update({ cover_scryfall_id: null, cover_image_url: null })
+      .eq("id", collectionId);
+    if (error) return { error: error.message };
+    revalidatePath(`/collections/${collectionId}`);
+    revalidatePath("/collections");
+    return { ok: true };
+  }
+
+  const { data: card } = await supabase
+    .from("collection_cards")
+    .select("scryfall_id, image_url")
+    .eq("id", cardId)
+    .eq("collection_id", collectionId)
+    .maybeSingle();
+  if (!card) return { error: "Card not in this collection" };
+
+  const { error } = await supabase
+    .from("collections")
+    .update({
+      cover_scryfall_id: card.scryfall_id,
+      cover_image_url: card.image_url,
+    })
+    .eq("id", collectionId);
+  if (error) return { error: error.message };
+
+  revalidatePath(`/collections/${collectionId}`);
+  revalidatePath("/collections");
+  return { ok: true };
+}
+
 export type ImportSummary = {
   added: number;
   matched: number;

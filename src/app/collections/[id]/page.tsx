@@ -8,6 +8,7 @@ import {
   CollectionValue,
   CollectionValueSkeleton,
 } from "@/components/CollectionValue";
+import { CoverPicker } from "@/components/CoverPicker";
 import { DeckBoard, DeckBoardSkeleton } from "@/components/DeckBoard";
 import { ImportExportPanel } from "@/components/ImportExportPanel";
 import { ManaCurve, ManaCurveSkeleton } from "@/components/ManaCurve";
@@ -84,18 +85,42 @@ export default async function CollectionDetailPage({
       <header
         className={`surface relative overflow-hidden ${COLLECTION_COLOR_RING[color]}`}
       >
+        {c.cover_image_url ? (
+          <>
+            <div
+              className="absolute inset-x-0 top-0 h-56 bg-cover bg-center"
+              style={{ backgroundImage: `url(${c.cover_image_url})` }}
+              aria-hidden
+            />
+            <div
+              className={`absolute inset-x-0 top-0 h-56 bg-gradient-to-br opacity-50 mix-blend-overlay ${COLLECTION_COLOR_GRADIENT[color]}`}
+              aria-hidden
+            />
+            <div
+              className="absolute inset-x-0 top-0 h-56 bg-gradient-to-b from-ink-950/50 via-ink-950/40 to-ink-900/95"
+              aria-hidden
+            />
+          </>
+        ) : (
+          <>
+            <div
+              className={`absolute inset-x-0 top-0 h-32 bg-gradient-to-br opacity-80 ${COLLECTION_COLOR_GRADIENT[color]}`}
+              aria-hidden
+            />
+            <div
+              className="absolute inset-x-0 top-0 h-32 bg-gradient-to-b from-transparent to-ink-900/95"
+              aria-hidden
+            />
+          </>
+        )}
         <div
-          className={`absolute inset-x-0 top-0 h-32 bg-gradient-to-br opacity-80 ${COLLECTION_COLOR_GRADIENT[color]}`}
-          aria-hidden
-        />
-        <div
-          className="absolute inset-x-0 top-0 h-32 bg-gradient-to-b from-transparent to-ink-900/95"
-          aria-hidden
-        />
-        <div className="relative flex flex-wrap items-start justify-between gap-4 p-6 pt-24">
+          className={`relative flex flex-wrap items-start justify-between gap-4 p-6 ${
+            c.cover_image_url ? "pt-44" : "pt-24"
+          }`}
+        >
           <div>
             <span className={chip}>{COLLECTION_TYPE_LABEL[c.type]}</span>
-            <h1 className="mt-2 font-display text-3xl text-ink-50 drop-shadow-[0_2px_8px_rgba(0,0,0,0.5)]">
+            <h1 className="mt-2 font-display text-3xl text-ink-50 drop-shadow-[0_2px_8px_rgba(0,0,0,0.65)]">
               {c.name}
             </h1>
             <p className="mt-1 text-sm text-ink-300">
@@ -112,6 +137,12 @@ export default async function CollectionDetailPage({
             </div>
           </div>
           <div className="flex items-center gap-2">
+            <CoverPicker
+              collectionId={c.id}
+              cards={items}
+              currentScryfallId={c.cover_scryfall_id}
+              hasCover={!!c.cover_image_url}
+            />
             <Link href={`/collections/${c.id}/edit`} className="btn-ghost">
               Edit
             </Link>
