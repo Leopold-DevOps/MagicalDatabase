@@ -22,21 +22,68 @@ export type QuickAddCard = {
   image_url: string | null;
 };
 
-export function QuickAddButton({
-  card,
-  collections,
-  isSignedIn,
-}: {
-  card: QuickAddCard;
-  collections: QuickAddCollection[];
+type CollectionsResponse = {
   isSignedIn: boolean;
-}) {
+  collections: QuickAddCollection[];
+};
+
+// Module-level cache shared across every QuickAddButton instance on the
+// page. The first popover open fires one /api/collections request; every
+// other "+" button hydrates from the cache. TTL keeps the list fresh in
+// case the user creates a new collection in another tab.
+const CACHE_TTL_MS = 60_000;
+let cache: { data: CollectionsResponse; ts: number } | null = null;
+let inflight: Promise<CollectionsResponse> | null = null;
+
+async function loadCollections(): Promise<CollectionsResponse> {
+  if (cache && Date.now() - cache.ts < CACHE_TTL_MS) return cache.data;
+  if (inflight) return inflight;
+  inflight = fetch("/api/collections", { credentials: "same-origin" })
+    .then((r) => {
+      if (!r.ok) throw new Error("Failed to load collections");
+      return r.json() as Promise<CollectionsResponse>;
+    })
+    .then((data) => {
+      cache = { data, ts: Date.now() };
+      inflight = null;
+      return data;
+    })
+    .catch((err) => {
+      inflight = null;
+      throw err;
+    });
+  return inflight;
+}
+
+function invalidateCollectionsCache() {
+  cache = null;
+}
+
+export function QuickAddButton({ card }: { card: QuickAddCard }) {
   const [open, setOpen] = useState(false);
+  const [data, setData] = useState<CollectionsResponse | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [feedback, setFeedback] = useState<
     { kind: "ok" | "error"; message: string } | null
   >(null);
   const [isPending, startTransition] = useTransition();
   const wrapperRef = useRef<HTMLDivElement | null>(null);
+
+  // Lazy fetch on first open (or whenever opened with no data yet).
+  useEffect(() => {
+    if (!open || data) return;
+    let cancelled = false;
+    loadCollections()
+      .then((d) => {
+        if (!cancelled) setData(d);
+      })
+      .catch(() => {
+        if (!cancelled) setLoadError("Couldn't load your collections.");
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [open, data]);
 
   useEffect(() => {
     if (!open) return;
@@ -59,21 +106,6 @@ export function QuickAddButton({
     };
   }, [open]);
 
-  // Not signed in → button just links to login
-  if (!isSignedIn) {
-    return (
-      <Link
-        href={`/auth/login?next=${encodeURIComponent(`/cards/${card.scryfall_id}`)}`}
-        onClick={(e) => e.stopPropagation()}
-        title="Sign in to save"
-        aria-label="Sign in to save"
-        className={triggerClass()}
-      >
-        +
-      </Link>
-    );
-  }
-
   function add(collection: QuickAddCollection, foil: boolean) {
     setFeedback(null);
     const fd = new FormData();
@@ -91,6 +123,7 @@ export function QuickAddButton({
       if (result?.error) {
         setFeedback({ kind: "error", message: result.error });
       } else if (result?.ok) {
+        invalidateCollectionsCache();
         setFeedback({
           kind: "ok",
           message: `Added${foil ? " foil" : ""} to ${collection.name}`,
@@ -126,7 +159,25 @@ export function QuickAddButton({
           onClick={(e) => e.preventDefault()}
           className="absolute right-0 top-9 w-60 rounded-lg border border-ink-700/80 bg-ink-950/95 p-2 shadow-soft backdrop-blur animate-fade-in-up"
         >
-          {collections.length === 0 ? (
+          {loadError ? (
+            <div className="px-2 py-3 text-center text-xs text-rose-300">
+              {loadError}
+            </div>
+          ) : !data ? (
+            <div className="px-2 py-3 text-center text-xs text-ink-400">
+              Loading…
+            </div>
+          ) : !data.isSignedIn ? (
+            <div className="px-2 py-3 text-center text-xs text-ink-400">
+              Sign in to save cards.
+              <Link
+                href={`/auth/login?next=${encodeURIComponent(`/cards/${card.scryfall_id}`)}`}
+                className="mt-1.5 block text-violet-300 transition hover:text-white"
+              >
+                Sign in →
+              </Link>
+            </div>
+          ) : data.collections.length === 0 ? (
             <div className="px-2 py-3 text-center text-xs text-ink-400">
               No collections yet.
               <Link
@@ -142,7 +193,7 @@ export function QuickAddButton({
                 Add to
               </p>
               <ul className="space-y-0.5">
-                {collections.map((c) => (
+                {data.collections.map((c) => (
                   <li key={c.id}>
                     <CollectionRow
                       collection={c}

@@ -1,36 +1,11 @@
 import Link from "next/link";
 import { Suspense } from "react";
 import { CardTile } from "@/components/CardTile";
-import type { QuickAddCollection } from "@/components/QuickAddButton";
 import { SearchBar } from "@/components/SearchBar";
 import { ResultsGridSkeleton } from "@/components/Skeleton";
 import { ScryfallError, searchCards } from "@/lib/scryfall";
-import { supabaseConfigured } from "@/lib/supabase/env";
-import { supabaseServer } from "@/lib/supabase/server";
 
 type SearchParams = Promise<{ q?: string; page?: string }>;
-
-async function fetchUserCollections(): Promise<{
-  isSignedIn: boolean;
-  collections: QuickAddCollection[];
-}> {
-  if (!supabaseConfigured()) {
-    return { isSignedIn: false, collections: [] };
-  }
-  const supabase = await supabaseServer();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return { isSignedIn: false, collections: [] };
-  const { data } = await supabase
-    .from("collections")
-    .select("id, name, type")
-    .order("created_at", { ascending: false });
-  return {
-    isSignedIn: true,
-    collections: (data ?? []) as QuickAddCollection[],
-  };
-}
 
 export default async function CardsPage({
   searchParams,
@@ -40,8 +15,6 @@ export default async function CardsPage({
   const { q = "", page = "1" } = await searchParams;
   const pageNum = Math.max(1, Number(page) || 1);
   const query = q.trim();
-
-  const { isSignedIn, collections } = await fetchUserCollections();
 
   return (
     <div className="flex flex-col gap-8">
@@ -64,12 +37,7 @@ export default async function CardsPage({
           key={`${query}-${pageNum}`}
           fallback={<ResultsGridSkeleton />}
         >
-          <Results
-            query={query}
-            pageNum={pageNum}
-            isSignedIn={isSignedIn}
-            collections={collections}
-          />
+          <Results query={query} pageNum={pageNum} />
         </Suspense>
       ) : (
         <p className="py-12 text-center text-ink-500">
@@ -80,17 +48,7 @@ export default async function CardsPage({
   );
 }
 
-async function Results({
-  query,
-  pageNum,
-  isSignedIn,
-  collections,
-}: {
-  query: string;
-  pageNum: number;
-  isSignedIn: boolean;
-  collections: QuickAddCollection[];
-}) {
+async function Results({ query, pageNum }: { query: string; pageNum: number }) {
   try {
     const data = await searchCards(query, pageNum);
     if (!data.data.length) {
@@ -112,11 +70,7 @@ async function Results({
         <ul className="stagger grid grid-cols-2 gap-5 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
           {data.data.map((c) => (
             <li key={c.id}>
-              <CardTile
-                card={c}
-                collections={collections}
-                isSignedIn={isSignedIn}
-              />
+              <CardTile card={c} />
             </li>
           ))}
         </ul>

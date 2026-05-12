@@ -1,9 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
-import {
-  QuickAddButton,
-  type QuickAddCollection,
-} from "@/components/QuickAddButton";
+import { QuickAddButton } from "@/components/QuickAddButton";
 import type { ScryfallCard } from "@/lib/scryfall";
 
 function tileImage(card: ScryfallCard): string | undefined {
@@ -15,15 +12,7 @@ function tileImage(card: ScryfallCard): string | undefined {
   );
 }
 
-export function CardTile({
-  card,
-  collections,
-  isSignedIn,
-}: {
-  card: ScryfallCard;
-  collections: QuickAddCollection[];
-  isSignedIn: boolean;
-}) {
+export function CardTile({ card }: { card: ScryfallCard }) {
   const img = tileImage(card);
   return (
     <div className="group relative">
@@ -64,8 +53,6 @@ export function CardTile({
           set_name: card.set_name ?? null,
           image_url: img ?? null,
         }}
-        collections={collections}
-        isSignedIn={isSignedIn}
       />
     </div>
   );
