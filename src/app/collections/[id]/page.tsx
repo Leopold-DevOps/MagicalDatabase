@@ -7,6 +7,7 @@ import {
   CollectionValue,
   CollectionValueSkeleton,
 } from "@/components/CollectionValue";
+import { DeckBoard, DeckBoardSkeleton } from "@/components/DeckBoard";
 import { ManaCurve, ManaCurveSkeleton } from "@/components/ManaCurve";
 import {
   COLLECTION_COLOR_GRADIENT,
@@ -133,12 +134,18 @@ export default async function CollectionDetailPage({
 
       <AddCardsPanel collectionId={c.id} />
 
-      <CollectionDetailView
-        collectionId={c.id}
-        type={c.type}
-        cards={items}
-        rawSettings={c.binder_settings}
-      />
+      {c.type === "deck" ? (
+        <Suspense fallback={<DeckBoardSkeleton />}>
+          <DeckBoard cards={items} />
+        </Suspense>
+      ) : (
+        <CollectionDetailView
+          collectionId={c.id}
+          type={c.type}
+          cards={items}
+          rawSettings={c.binder_settings}
+        />
+      )}
     </div>
   );
 }
