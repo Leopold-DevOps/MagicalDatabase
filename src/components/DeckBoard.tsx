@@ -395,7 +395,6 @@ function Stack({
           collectionId={collectionId}
           item={item}
           isFirst={i === 0}
-          isLast={i === items.length - 1}
           showCommanderToggle={showCommanderToggle}
         />
       ))}
@@ -407,13 +406,11 @@ function StackedCard({
   collectionId,
   item,
   isFirst,
-  isLast,
   showCommanderToggle,
 }: {
   collectionId: string;
   item: Item;
   isFirst: boolean;
-  isLast: boolean;
   showCommanderToggle: boolean;
 }) {
   const { card } = item;
@@ -461,33 +458,33 @@ function StackedCard({
         </div>
       </Link>
 
-      {/* Hover-action row on the bottom card so we don't obscure the
-          visible name strip of cards stacked above. */}
-      {isLast && (
-        <div className="pointer-events-none absolute inset-x-0 bottom-1 z-10 flex justify-center gap-1 opacity-0 transition group-hover:pointer-events-auto group-hover:opacity-100">
-          {showCommanderToggle && (
-            <CommanderToggle
-              collectionId={collectionId}
-              cardId={card.id}
-              isCommander={card.is_commander}
-            />
-          )}
-          <form action={removeCardFromCollection}>
-            <input type="hidden" name="id" value={card.id} />
-            <input
-              type="hidden"
-              name="collection_id"
-              value={card.collection_id}
-            />
-            <button
-              type="submit"
-              className="rounded-md border border-rose-400/40 bg-ink-950/85 px-2 py-0.5 text-[10px] font-medium text-rose-300 backdrop-blur-sm transition hover:bg-rose-500/20"
-            >
-              Remove
-            </button>
-          </form>
-        </div>
-      )}
+      {/* Hover-action row appears at the bottom of the hovered card.
+          The card's own hover:z-20 + translate-y exposes its full body,
+          so this bar sits inside the visible area, well below the title
+          strips of cards stacked above. */}
+      <div className="pointer-events-none absolute inset-x-0 bottom-1 z-10 flex justify-center gap-1 opacity-0 transition group-hover:pointer-events-auto group-hover:opacity-100">
+        {showCommanderToggle && (
+          <CommanderToggle
+            collectionId={collectionId}
+            cardId={card.id}
+            isCommander={card.is_commander}
+          />
+        )}
+        <form action={removeCardFromCollection}>
+          <input type="hidden" name="id" value={card.id} />
+          <input
+            type="hidden"
+            name="collection_id"
+            value={card.collection_id}
+          />
+          <button
+            type="submit"
+            className="rounded-md border border-rose-400/40 bg-ink-950/85 px-2 py-0.5 text-[10px] font-medium text-rose-300 backdrop-blur-sm transition hover:bg-rose-500/20"
+          >
+            Remove
+          </button>
+        </form>
+      </div>
     </div>
   );
 }
