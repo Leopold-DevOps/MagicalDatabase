@@ -9,6 +9,7 @@ import {
   CollectionValueSkeleton,
 } from "@/components/CollectionValue";
 import { DeckBoard, DeckBoardSkeleton } from "@/components/DeckBoard";
+import { ImportExportPanel } from "@/components/ImportExportPanel";
 import { ManaCurve, ManaCurveSkeleton } from "@/components/ManaCurve";
 import {
   COLLECTION_COLOR_GRADIENT,
@@ -133,7 +134,14 @@ export default async function CollectionDetailPage({
         </Suspense>
       )}
 
-      <AddCardsPanel collectionId={c.id} />
+      <div className="grid gap-3 sm:grid-cols-2">
+        <AddCardsPanel collectionId={c.id} />
+        <ImportExportPanel
+          collectionId={c.id}
+          type={c.type}
+          cards={items}
+        />
+      </div>
 
       {c.type === "deck" ? (
         <Suspense fallback={<DeckBoardSkeleton />}>

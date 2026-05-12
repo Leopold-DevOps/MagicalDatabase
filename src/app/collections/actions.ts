@@ -11,6 +11,11 @@ import {
   type CollectionType,
 } from "@/lib/collections";
 import { isDeckFormat } from "@/lib/deck";
+import { parseDecklist } from "@/lib/decklist";
+import {
+  resolveCardIdentifiers,
+  type ScryfallIdentifier,
+} from "@/lib/scryfall";
 import { supabaseServer } from "@/lib/supabase/server";
 
 function field(formData: FormData, key: string) {
@@ -492,4 +497,144 @@ export async function setCommander(
 
   revalidatePath(`/collections/${collectionId}`);
   return { ok: true };
+}
+
+export type ImportSummary = {
+  added: number;
+  matched: number;
+  notFound: string[];
+  unparsed: string[];
+};
+
+/**
+ * Parse a pasted decklist (MTGO / MTGA / CSV — auto-detected), resolve every
+ * line against Scryfall, and insert matching cards into the collection's
+ * tray. Stacks of the same printing + foil flag are merged into existing
+ * tray rows. For deck collections, the first card in a `Commander:` section
+ * is also flagged as the deck's commander.
+ */
+export async function importDecklist(
+  collectionId: string,
+  text: string,
+  options: { allowCommander?: boolean } = {},
+): Promise<{ ok: true; summary: ImportSummary } | { error: string }> {
+  if (!collectionId) return { error: "Missing collection" };
+  if (!text || !text.trim()) return { error: "Nothing to import" };
+
+  const supabase = await supabaseServer();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "Not signed in" };
+
+  const parsed = parseDecklist(text);
+  if (parsed.items.length === 0) {
+    return {
+      ok: true,
+      summary: {
+        added: 0,
+        matched: 0,
+        notFound: [],
+        unparsed: parsed.unparsed,
+      },
+    };
+  }
+
+  // Build identifiers — prefer (set, collector_number) when both are
+  // present, else (name, set), else (name).
+  const identifiers: ScryfallIdentifier[] = parsed.items.map((it) => {
+    if (it.set && it.collectorNumber) {
+      return {
+        set: it.set.toLowerCase(),
+        collector_number: it.collectorNumber,
+      };
+    }
+    if (it.set) return { name: it.name, set: it.set.toLowerCase() };
+    return { name: it.name };
+  });
+
+  let resolved;
+  try {
+    resolved = await resolveCardIdentifiers(identifiers);
+  } catch (err) {
+    return { error: `Scryfall lookup failed: ${(err as Error).message}` };
+  }
+
+  // Match resolved cards back to parsed items by name (case-insensitive,
+  // tolerates split-card "//" returned as just the front face).
+  const byName = new Map<string, (typeof resolved.data)[number]>();
+  for (const card of resolved.data) {
+    byName.set(card.name.toLowerCase(), card);
+    const front = card.name.split("//")[0]?.trim().toLowerCase();
+    if (front && !byName.has(front)) byName.set(front, card);
+  }
+
+  const summary: ImportSummary = {
+    added: 0,
+    matched: 0,
+    notFound: [],
+    unparsed: parsed.unparsed,
+  };
+
+  let assignedCommander = false;
+  for (const item of parsed.items) {
+    const card = byName.get(item.name.toLowerCase());
+    if (!card) {
+      summary.notFound.push(item.source);
+      continue;
+    }
+    summary.matched++;
+
+    const isFoil = item.foil === true;
+    const imageUrl =
+      card.image_uris?.normal ??
+      card.card_faces?.[0]?.image_uris?.normal ??
+      card.image_uris?.large ??
+      card.image_uris?.small ??
+      null;
+
+    const { data: existing } = await supabase
+      .from("collection_cards")
+      .select("id, quantity")
+      .eq("collection_id", collectionId)
+      .eq("scryfall_id", card.id)
+      .eq("is_foil", isFoil)
+      .is("page_index", null)
+      .is("pocket_index", null)
+      .limit(1)
+      .maybeSingle();
+
+    if (existing) {
+      const u = await supabase
+        .from("collection_cards")
+        .update({ quantity: (existing.quantity ?? 0) + item.qty })
+        .eq("id", existing.id);
+      if (u.error) return { error: u.error.message };
+      summary.added += item.qty;
+    } else {
+      const shouldFlagCommander =
+        options.allowCommander === true &&
+        item.isCommander === true &&
+        !assignedCommander;
+      const ins = await supabase.from("collection_cards").insert({
+        collection_id: collectionId,
+        scryfall_id: card.id,
+        card_name: card.name,
+        set_code: card.set ?? null,
+        set_name: card.set_name ?? null,
+        image_url: imageUrl,
+        quantity: item.qty,
+        is_foil: isFoil,
+        is_commander: shouldFlagCommander,
+        page_index: null,
+        pocket_index: null,
+      });
+      if (ins.error) return { error: ins.error.message };
+      summary.added += item.qty;
+      if (shouldFlagCommander) assignedCommander = true;
+    }
+  }
+
+  revalidatePath(`/collections/${collectionId}`);
+  return { ok: true, summary };
 }

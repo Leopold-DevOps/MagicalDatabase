@@ -130,6 +130,48 @@ export async function getCardsByIds(ids: string[]): Promise<ScryfallCard[]> {
   return all;
 }
 
+export type ScryfallIdentifier =
+  | { id: string }
+  | { name: string }
+  | { name: string; set: string }
+  | { set: string; collector_number: string };
+
+/**
+ * Resolve cards by mixed identifiers (name, name+set, set+collector_number).
+ * Returns the matched cards in the same order as identifiers when possible,
+ * plus the identifiers Scryfall couldn't find so the caller can surface
+ * import errors. Chunked at 75 per request.
+ */
+export async function resolveCardIdentifiers(
+  identifiers: ScryfallIdentifier[],
+): Promise<{ data: ScryfallCard[]; notFound: ScryfallIdentifier[] }> {
+  if (identifiers.length === 0) return { data: [], notFound: [] };
+  const allData: ScryfallCard[] = [];
+  const notFound: ScryfallIdentifier[] = [];
+  for (let i = 0; i < identifiers.length; i += 75) {
+    const chunk = identifiers.slice(i, i + 75);
+    const res = await fetch(`${BASE}/cards/collection`, {
+      method: "POST",
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+        "User-Agent":
+          "MagicalDatabase/0.1 (https://github.com/Leopold-DevOps/magicaldatabase)",
+      },
+      body: JSON.stringify({ identifiers: chunk }),
+      cache: "no-store",
+    });
+    if (!res.ok) throw new ScryfallError(res.status, res.statusText);
+    const body = (await res.json()) as {
+      data: ScryfallCard[];
+      not_found?: ScryfallIdentifier[];
+    };
+    allData.push(...body.data);
+    if (body.not_found) notFound.push(...body.not_found);
+  }
+  return { data: allData, notFound };
+}
+
 export async function getPrints(
   card: ScryfallCard,
 ): Promise<ScryfallCard[]> {
