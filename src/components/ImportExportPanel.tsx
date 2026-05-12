@@ -288,6 +288,49 @@ function ImportTab({
         )}
       </p>
 
+      {/* Append / Replace segmented control — at the top so the choice is
+          made before the user pastes anything. */}
+      <div className="flex flex-wrap items-center gap-3">
+        <span className="text-[10px] uppercase tracking-wider text-ink-500">
+          Mode
+        </span>
+        <div className="inline-flex rounded-md border border-ink-700 p-0.5">
+          <button
+            type="button"
+            onClick={() => setReplace(false)}
+            disabled={isPending}
+            className={`rounded px-3 py-1 text-xs transition disabled:opacity-50 ${
+              !replace
+                ? "bg-violet-500/20 font-medium text-violet-100 ring-1 ring-violet-400/40"
+                : "text-ink-400 hover:text-ink-100"
+            }`}
+          >
+            Append
+          </button>
+          <button
+            type="button"
+            onClick={() => setReplace(true)}
+            disabled={isPending}
+            className={`rounded px-3 py-1 text-xs transition disabled:opacity-50 ${
+              replace
+                ? "bg-rose-500/20 font-medium text-rose-200 ring-1 ring-rose-400/50"
+                : "text-ink-400 hover:text-ink-100"
+            }`}
+          >
+            Replace
+          </button>
+        </div>
+        {replace ? (
+          <span className="text-[11px] text-rose-300/90">
+            Wipes the current collection first.
+          </span>
+        ) : (
+          <span className="text-[11px] text-ink-500">
+            Merges into existing tray stacks.
+          </span>
+        )}
+      </div>
+
       <textarea
         value={text}
         onChange={(e) => setText(e.target.value)}
@@ -299,28 +342,7 @@ function ImportTab({
         className="input-field h-48 w-full resize-y font-mono text-xs leading-relaxed"
       />
 
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <label className="flex cursor-pointer items-center gap-2 text-xs">
-          <input
-            type="checkbox"
-            checked={replace}
-            onChange={(e) => setReplace(e.target.checked)}
-            disabled={isPending}
-            className="accent-rose-400"
-          />
-          <span
-            className={
-              replace ? "font-medium text-rose-300" : "text-ink-400"
-            }
-          >
-            Replace existing cards
-          </span>
-          {replace && (
-            <span className="text-[10px] text-rose-400/80">
-              wipes the collection first
-            </span>
-          )}
-        </label>
+      <div className="flex items-center justify-end">
         <button
           type="button"
           onClick={submit}
