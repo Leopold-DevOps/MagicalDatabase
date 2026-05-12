@@ -18,11 +18,13 @@ export function CollectionDetailView({
   type,
   cards,
   rawSettings,
+  isOwner = true,
 }: {
   collectionId: string;
   type: CollectionType;
   cards: CollectionCard[];
   rawSettings: unknown;
+  isOwner?: boolean;
 }) {
   const isBinder = type === "binder";
   const settings: BinderSettings = normalizeBinderSettings(rawSettings);
@@ -57,9 +59,10 @@ export function CollectionDetailView({
           collectionId={collectionId}
           initialCards={cards}
           initialSettings={settings}
+          isOwner={isOwner}
         />
       ) : (
-        <GridView cards={cards} />
+        <GridView cards={cards} isOwner={isOwner} />
       )}
     </div>
   );
@@ -89,14 +92,22 @@ function ViewTab({
   );
 }
 
-function GridView({ cards }: { cards: CollectionCard[] }) {
+function GridView({
+  cards,
+  isOwner,
+}: {
+  cards: CollectionCard[];
+  isOwner: boolean;
+}) {
   if (cards.length === 0) {
     return (
       <div className="surface p-10 text-center">
         <p className="text-ink-300">This collection is empty.</p>
-        <Link href="/cards" className="btn-primary mt-4">
-          Find cards to add
-        </Link>
+        {isOwner && (
+          <Link href="/cards" className="btn-primary mt-4">
+            Find cards to add
+          </Link>
+        )}
       </div>
     );
   }
@@ -104,14 +115,20 @@ function GridView({ cards }: { cards: CollectionCard[] }) {
     <ul className="stagger grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
       {cards.map((item) => (
         <li key={item.id}>
-          <CardEntry item={item} />
+          <CardEntry item={item} isOwner={isOwner} />
         </li>
       ))}
     </ul>
   );
 }
 
-function CardEntry({ item }: { item: CollectionCard }) {
+function CardEntry({
+  item,
+  isOwner,
+}: {
+  item: CollectionCard;
+  isOwner: boolean;
+}) {
   return (
     <div className="surface group overflow-hidden transition hover:border-violet-400/40">
       <Link
@@ -148,20 +165,22 @@ function CardEntry({ item }: { item: CollectionCard }) {
           <span className="chip">×{item.quantity}</span>
           {item.is_foil && <span className="chip-gold">Foil</span>}
         </div>
-        <form action={removeCardFromCollection}>
-          <input type="hidden" name="id" value={item.id} />
-          <input
-            type="hidden"
-            name="collection_id"
-            value={item.collection_id}
-          />
-          <button
-            type="submit"
-            className="btn-subtle text-rose-300 hover:bg-rose-400/10"
-          >
-            Remove
-          </button>
-        </form>
+        {isOwner && (
+          <form action={removeCardFromCollection}>
+            <input type="hidden" name="id" value={item.id} />
+            <input
+              type="hidden"
+              name="collection_id"
+              value={item.collection_id}
+            />
+            <button
+              type="submit"
+              className="btn-subtle text-rose-300 hover:bg-rose-400/10"
+            >
+              Remove
+            </button>
+          </form>
+        )}
       </div>
     </div>
   );

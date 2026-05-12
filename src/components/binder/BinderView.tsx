@@ -43,6 +43,7 @@ type Props = {
   collectionId: string;
   initialCards: CollectionCard[];
   initialSettings: BinderSettings;
+  isOwner?: boolean;
 };
 
 const TRAY_DROPPABLE_ID = "tray";
@@ -52,6 +53,7 @@ export function BinderView({
   collectionId,
   initialCards,
   initialSettings,
+  isOwner = true,
 }: Props) {
   const [cards, setCards] = useState<CollectionCard[]>(initialCards);
   const [settings, setSettings] = useState<BinderSettings>(initialSettings);
@@ -239,6 +241,7 @@ export function BinderView({
         onSetFilter={setSetFilter}
         showSettings={showSettings}
         onToggleSettings={() => setShowSettings((s) => !s)}
+        showSettingsButton={isOwner}
       />
 
       {showSettings && (
@@ -266,7 +269,11 @@ export function BinderView({
         onDragEnd={handleDragEnd}
       >
         <div className="grid gap-4 lg:grid-cols-[260px_1fr]">
-          <Tray cards={filteredTray} totalLoose={trayCards.length} />
+          <Tray
+            cards={filteredTray}
+            totalLoose={trayCards.length}
+            isOwner={isOwner}
+          />
 
           <div className="flex flex-col gap-3">
             <BinderPage
@@ -275,14 +282,17 @@ export function BinderView({
               layout={settings.pocketsPerPage}
               page={safePage}
               placed={placedByPage.get(safePage)}
+              isOwner={isOwner}
             />
 
             <Pager
               page={safePage}
               totalPages={totalPages}
               onChange={setPage}
-              onAddPage={handleAddPage}
-              onRemovePage={lastPageEmpty ? handleRemovePage : undefined}
+              onAddPage={isOwner ? handleAddPage : undefined}
+              onRemovePage={
+                isOwner && lastPageEmpty ? handleRemovePage : undefined
+              }
             />
           </div>
         </div>
@@ -438,6 +448,7 @@ function Toolbar({
   onSetFilter,
   showSettings,
   onToggleSettings,
+  showSettingsButton,
 }: {
   search: string;
   onSearch: (v: string) => void;
@@ -448,6 +459,7 @@ function Toolbar({
   onSetFilter: (v: string | null) => void;
   showSettings: boolean;
   onToggleSettings: () => void;
+  showSettingsButton: boolean;
 }) {
   return (
     <div className="surface flex flex-wrap items-center gap-2 p-3">
@@ -485,14 +497,16 @@ function Toolbar({
           ))}
         </select>
       )}
-      <button
-        type="button"
-        onClick={onToggleSettings}
-        className={`btn-ghost ${showSettings ? "border-violet-400/50 text-white" : ""}`}
-        aria-expanded={showSettings}
-      >
-        ⚙ Binder
-      </button>
+      {showSettingsButton && (
+        <button
+          type="button"
+          onClick={onToggleSettings}
+          className={`btn-ghost ${showSettings ? "border-violet-400/50 text-white" : ""}`}
+          aria-expanded={showSettings}
+        >
+          ⚙ Binder
+        </button>
+      )}
     </div>
   );
 }
@@ -584,11 +598,16 @@ function SettingsPanel({
 function Tray({
   cards,
   totalLoose,
+  isOwner,
 }: {
   cards: CollectionCard[];
   totalLoose: number;
+  isOwner: boolean;
 }) {
-  const { setNodeRef, isOver } = useDroppable({ id: TRAY_DROPPABLE_ID });
+  const { setNodeRef, isOver } = useDroppable({
+    id: TRAY_DROPPABLE_ID,
+    disabled: !isOwner,
+  });
   return (
     <div
       ref={setNodeRef}
@@ -612,7 +631,7 @@ function Tray({
         <ul className="grid grid-cols-3 gap-2 overflow-y-auto pr-1 lg:grid-cols-2">
           {cards.map((c) => (
             <li key={c.id}>
-              <DraggableCard card={c} size="tray" />
+              <DraggableCard card={c} size="tray" isOwner={isOwner} />
             </li>
           ))}
         </ul>
@@ -627,12 +646,14 @@ function BinderPage({
   layout,
   page,
   placed,
+  isOwner,
 }: {
   cover: BinderCover;
   style: BinderStyle;
   layout: BinderLayout;
   page: number;
   placed: Map<number, CollectionCard> | undefined;
+  isOwner: boolean;
 }) {
   const grid = BINDER_LAYOUT_GRID[layout];
   return (
@@ -664,6 +685,7 @@ function BinderPage({
                 page={page}
                 pocket={i}
                 card={placed?.get(i) ?? null}
+                isOwner={isOwner}
               />
             ))}
           </div>
@@ -684,12 +706,17 @@ function Pocket({
   page,
   pocket,
   card,
+  isOwner,
 }: {
   page: number;
   pocket: number;
   card: CollectionCard | null;
+  isOwner: boolean;
 }) {
-  const { setNodeRef, isOver } = useDroppable({ id: pocketId(page, pocket) });
+  const { setNodeRef, isOver } = useDroppable({
+    id: pocketId(page, pocket),
+    disabled: !isOwner,
+  });
   return (
     <div
       ref={setNodeRef}
@@ -701,7 +728,9 @@ function Pocket({
             : "border border-dashed border-white/15 bg-black/20"
       }`}
     >
-      {card ? <DraggableCard card={card} size="pocket" /> : null}
+      {card ? (
+        <DraggableCard card={card} size="pocket" isOwner={isOwner} />
+      ) : null}
     </div>
   );
 }
@@ -709,12 +738,15 @@ function Pocket({
 function DraggableCard({
   card,
   size,
+  isOwner,
 }: {
   card: CollectionCard;
   size: "pocket" | "tray";
+  isOwner: boolean;
 }) {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: card.id,
+    disabled: !isOwner,
   });
   const inPocket = size === "pocket";
   const showFoil = card.is_foil;
@@ -723,7 +755,9 @@ function DraggableCard({
       ref={setNodeRef}
       {...attributes}
       {...listeners}
-      className={`group relative h-full w-full cursor-grab overflow-hidden rounded-md transition active:cursor-grabbing ${
+      className={`group relative h-full w-full overflow-hidden rounded-md transition ${
+        isOwner ? "cursor-grab active:cursor-grabbing" : ""
+      } ${
         inPocket
           ? "shadow-md hover:scale-[1.04] hover:ring-2 hover:ring-violet-300/60 hover:shadow-glow"
           : "aspect-[5/7] hover:scale-[1.04] hover:ring-2 hover:ring-violet-300/60"
@@ -804,7 +838,7 @@ function Pager({
   page: number;
   totalPages: number;
   onChange: (p: number) => void;
-  onAddPage: () => void;
+  onAddPage?: () => void;
   onRemovePage?: () => void;
 }) {
   return (
@@ -841,14 +875,16 @@ function Pager({
             − Page
           </button>
         )}
-        <button
-          type="button"
-          onClick={onAddPage}
-          disabled={totalPages >= MAX_BINDER_PAGES}
-          className="btn-subtle disabled:cursor-not-allowed disabled:opacity-40"
-        >
-          + Page
-        </button>
+        {onAddPage && (
+          <button
+            type="button"
+            onClick={onAddPage}
+            disabled={totalPages >= MAX_BINDER_PAGES}
+            className="btn-subtle disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            + Page
+          </button>
+        )}
       </div>
     </div>
   );

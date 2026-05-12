@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { UsernameEditor } from "@/components/UsernameEditor";
 import { supabaseConfigured } from "@/lib/supabase/env";
 import { supabaseServer } from "@/lib/supabase/server";
 
@@ -11,6 +12,12 @@ export default async function AccountPage() {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) redirect("/auth/login?next=/account");
+
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("username")
+    .eq("user_id", user.id)
+    .maybeSingle();
 
   const created = user.created_at
     ? new Date(user.created_at).toLocaleDateString()
@@ -28,6 +35,8 @@ export default async function AccountPage() {
         </Row>
         <Row label="Member since">{created}</Row>
       </div>
+
+      <UsernameEditor initialUsername={profile?.username ?? null} />
 
       <div className="surface mt-4 flex flex-wrap items-center justify-between gap-3 p-5">
         <div>

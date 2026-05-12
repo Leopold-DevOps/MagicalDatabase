@@ -2,7 +2,13 @@ import type { CollectionCard } from "@/lib/collections";
 import { getCardsByIds } from "@/lib/scryfall";
 import { BulkViewClient } from "./BulkViewClient";
 
-export async function BulkView({ cards }: { cards: CollectionCard[] }) {
+export async function BulkView({
+  cards,
+  isOwner = true,
+}: {
+  cards: CollectionCard[];
+  isOwner?: boolean;
+}) {
   if (cards.length === 0) {
     return (
       <div className="surface p-10 text-center">
@@ -25,7 +31,9 @@ export async function BulkView({ cards }: { cards: CollectionCard[] }) {
     // Continue with empty colour data — colour grouping falls back to "Colorless".
   }
 
-  return <BulkViewClient cards={cards} colorMap={colorMap} />;
+  return (
+    <BulkViewClient cards={cards} colorMap={colorMap} isOwner={isOwner} />
+  );
 }
 
 export function BulkViewSkeleton() {

@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { CollectionColorPicker } from "@/components/CollectionColorPicker";
 import { CoverPicker } from "@/components/CoverPicker";
+import { VisibilityToggle } from "@/components/VisibilityToggle";
 import {
   type Collection,
   type CollectionCard,
@@ -50,6 +51,13 @@ export default async function EditCollectionPage({
     .order("is_commander", { ascending: false })
     .order("added_at", { ascending: false });
   const cards = (cardRows ?? []) as CollectionCard[];
+
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("username")
+    .eq("user_id", user.id)
+    .maybeSingle();
+  const hasUsername = !!profile?.username;
 
   return (
     <div className="mx-auto max-w-xl">
@@ -126,9 +134,18 @@ export default async function EditCollectionPage({
           </div>
         </form>
 
-        {/* Cover lives outside the form because it saves immediately via its
-            own server action and shouldn't be tied to the form's submit. */}
+        {/* Visibility + Cover live outside the form because they save
+            immediately via their own server actions and shouldn't be tied
+            to the form submit. */}
         <div className="mt-6 border-t border-ink-800/60 pt-5">
+          <VisibilityToggle
+            collectionId={c.id}
+            initial={c.is_public}
+            hasUsername={hasUsername}
+          />
+        </div>
+
+        <div className="mt-5 border-t border-ink-800/60 pt-5">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
               <p className="text-xs uppercase tracking-wider text-ink-400">

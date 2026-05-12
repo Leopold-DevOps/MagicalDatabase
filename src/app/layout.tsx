@@ -47,6 +47,9 @@ export default function RootLayout({
               <Link href="/cards" className="transition hover:text-white">
                 Cards
               </Link>
+              <Link href="/browse" className="transition hover:text-white">
+                Browse
+              </Link>
               <Link
                 href="/collections"
                 className="transition hover:text-white"

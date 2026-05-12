@@ -64,10 +64,12 @@ export async function DeckBoard({
   collectionId,
   cards,
   deckFormat,
+  isOwner = true,
 }: {
   collectionId: string;
   cards: CollectionCard[];
   deckFormat: string | null;
+  isOwner?: boolean;
 }) {
   const format: DeckFormat = normalizeDeckFormat(deckFormat);
   const formatInfo = DECK_FORMAT_INFO[format];
@@ -82,11 +84,14 @@ export async function DeckBoard({
           nonLands={0}
           lands={0}
           avgCmc="—"
+          isOwner={isOwner}
         />
         <div className="surface p-10 text-center">
           <p className="text-ink-300">This deck is empty.</p>
           <p className="mt-1 text-xs text-ink-500">
-            Open the Add cards panel above to start building.
+            {isOwner
+              ? "Open the Add cards panel above to start building."
+              : "Nothing here yet."}
           </p>
         </div>
       </div>
@@ -161,12 +166,14 @@ export async function DeckBoard({
         nonLands={nonLands}
         lands={lands}
         avgCmc={avgCmc}
+        isOwner={isOwner}
       />
 
       {formatInfo.hasCommander && (
         <CommanderSlot
           collectionId={collectionId}
           items={commanderItems}
+          isOwner={isOwner}
         />
       )}
 
@@ -184,7 +191,8 @@ export async function DeckBoard({
               type={type}
               count={count}
               items={items}
-              showCommanderToggle={formatInfo.hasCommander}
+              showCommanderToggle={formatInfo.hasCommander && isOwner}
+              isOwner={isOwner}
             />
           );
         })}
@@ -200,6 +208,7 @@ function SummaryBar({
   nonLands,
   lands,
   avgCmc,
+  isOwner,
 }: {
   collectionId: string;
   format: DeckFormat;
@@ -207,6 +216,7 @@ function SummaryBar({
   nonLands: number;
   lands: number;
   avgCmc: string;
+  isOwner: boolean;
 }) {
   const limit = DECK_FORMAT_INFO[format].limit;
   const over = limit !== null && total > limit;
@@ -217,7 +227,14 @@ function SummaryBar({
       <Stat label="Lands" value={lands} />
       <Stat label="Avg CMC" value={avgCmc} />
       <div className="ml-auto">
-        <DeckFormatSelector collectionId={collectionId} current={format} />
+        {isOwner ? (
+          <DeckFormatSelector collectionId={collectionId} current={format} />
+        ) : (
+          <span className="text-xs text-ink-500">
+            <span className="uppercase tracking-wider">Format</span>{" "}
+            <span className="text-ink-200">{DECK_FORMAT_INFO[format].label}</span>
+          </span>
+        )}
       </div>
     </div>
   );
@@ -270,9 +287,11 @@ function Stat({ label, value }: { label: string; value: number | string }) {
 function CommanderSlot({
   collectionId,
   items,
+  isOwner,
 }: {
   collectionId: string;
   items: Item[];
+  isOwner: boolean;
 }) {
   return (
     <div className="surface flex items-start gap-4 border-amber-400/30 bg-gradient-to-br from-amber-500/5 to-transparent p-4">
@@ -288,7 +307,9 @@ function CommanderSlot({
       </div>
       {items.length === 0 ? (
         <div className="grid h-32 flex-1 place-items-center rounded-md border border-dashed border-amber-400/30 px-4 text-center text-xs text-amber-200/70">
-          Hover any card and click <em>Set as commander</em>.
+          {isOwner
+            ? "Hover any card and click Set as commander."
+            : "No commander assigned."}
         </div>
       ) : (
         <div className="flex flex-1 flex-wrap gap-3">
@@ -297,6 +318,7 @@ function CommanderSlot({
               key={item.card.id}
               collectionId={collectionId}
               item={item}
+              isOwner={isOwner}
             />
           ))}
         </div>
@@ -308,9 +330,11 @@ function CommanderSlot({
 function CommanderCard({
   collectionId,
   item,
+  isOwner,
 }: {
   collectionId: string;
   item: Item;
+  isOwner: boolean;
 }) {
   const { card } = item;
   const img = card.image_url;
@@ -337,13 +361,15 @@ function CommanderCard({
           )}
         </div>
       </Link>
-      <div className="pointer-events-none absolute inset-x-0 bottom-1 flex justify-center opacity-0 transition group-hover:pointer-events-auto group-hover:opacity-100">
-        <CommanderToggle
-          collectionId={collectionId}
-          cardId={card.id}
-          isCommander={true}
-        />
-      </div>
+      {isOwner && (
+        <div className="pointer-events-none absolute inset-x-0 bottom-1 flex justify-center opacity-0 transition group-hover:pointer-events-auto group-hover:opacity-100">
+          <CommanderToggle
+            collectionId={collectionId}
+            cardId={card.id}
+            isCommander={true}
+          />
+        </div>
+      )}
     </div>
   );
 }
@@ -354,12 +380,14 @@ function Column({
   count,
   items,
   showCommanderToggle,
+  isOwner,
 }: {
   collectionId: string;
   type: CardType;
   count: number;
   items: Item[];
   showCommanderToggle: boolean;
+  isOwner: boolean;
 }) {
   return (
     <div className="flex flex-col">
@@ -373,6 +401,7 @@ function Column({
         collectionId={collectionId}
         items={items}
         showCommanderToggle={showCommanderToggle}
+        isOwner={isOwner}
       />
     </div>
   );
@@ -382,10 +411,12 @@ function Stack({
   collectionId,
   items,
   showCommanderToggle,
+  isOwner,
 }: {
   collectionId: string;
   items: Item[];
   showCommanderToggle: boolean;
+  isOwner: boolean;
 }) {
   return (
     <div className="flex flex-col">
@@ -396,6 +427,7 @@ function Stack({
           item={item}
           isFirst={i === 0}
           showCommanderToggle={showCommanderToggle}
+          isOwner={isOwner}
         />
       ))}
     </div>
@@ -407,11 +439,13 @@ function StackedCard({
   item,
   isFirst,
   showCommanderToggle,
+  isOwner,
 }: {
   collectionId: string;
   item: Item;
   isFirst: boolean;
   showCommanderToggle: boolean;
+  isOwner: boolean;
 }) {
   const { card } = item;
   const img = card.image_url;
@@ -462,29 +496,31 @@ function StackedCard({
           The card's own hover:z-20 + translate-y exposes its full body,
           so this bar sits inside the visible area, well below the title
           strips of cards stacked above. */}
-      <div className="pointer-events-none absolute inset-x-0 bottom-1 z-10 flex justify-center gap-1 opacity-0 transition group-hover:pointer-events-auto group-hover:opacity-100">
-        {showCommanderToggle && (
-          <CommanderToggle
-            collectionId={collectionId}
-            cardId={card.id}
-            isCommander={card.is_commander}
-          />
-        )}
-        <form action={removeCardFromCollection}>
-          <input type="hidden" name="id" value={card.id} />
-          <input
-            type="hidden"
-            name="collection_id"
-            value={card.collection_id}
-          />
-          <button
-            type="submit"
-            className="rounded-md border border-rose-400/40 bg-ink-950/85 px-2 py-0.5 text-[10px] font-medium text-rose-300 backdrop-blur-sm transition hover:bg-rose-500/20"
-          >
-            Remove
-          </button>
-        </form>
-      </div>
+      {isOwner && (
+        <div className="pointer-events-none absolute inset-x-0 bottom-1 z-10 flex justify-center gap-1 opacity-0 transition group-hover:pointer-events-auto group-hover:opacity-100">
+          {showCommanderToggle && (
+            <CommanderToggle
+              collectionId={collectionId}
+              cardId={card.id}
+              isCommander={card.is_commander}
+            />
+          )}
+          <form action={removeCardFromCollection}>
+            <input type="hidden" name="id" value={card.id} />
+            <input
+              type="hidden"
+              name="collection_id"
+              value={card.collection_id}
+            />
+            <button
+              type="submit"
+              className="rounded-md border border-rose-400/40 bg-ink-950/85 px-2 py-0.5 text-[10px] font-medium text-rose-300 backdrop-blur-sm transition hover:bg-rose-500/20"
+            >
+              Remove
+            </button>
+          </form>
+        </div>
+      )}
     </div>
   );
 }

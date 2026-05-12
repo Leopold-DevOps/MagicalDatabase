@@ -62,8 +62,25 @@ export type Collection = {
   deck_format: string | null;
   cover_scryfall_id: string | null;
   cover_image_url: string | null;
+  is_public: boolean;
   created_at: string;
 };
+
+export type Profile = {
+  user_id: string;
+  username: string;
+  created_at: string;
+};
+
+export const USERNAME_RE = /^[a-z0-9_-]{3,30}$/;
+export function validateUsername(value: string): string | null {
+  if (!value) return "Username is required.";
+  if (value.length < 3) return "At least 3 characters.";
+  if (value.length > 30) return "At most 30 characters.";
+  if (!USERNAME_RE.test(value))
+    return "Lowercase letters, digits, underscore, or dash only.";
+  return null;
+}
 
 export type CollectionCard = {
   id: string;

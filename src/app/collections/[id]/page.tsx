@@ -39,8 +39,10 @@ export default async function CollectionDetailPage({
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) redirect(`/auth/login?next=/collections/${id}`);
 
+  // RLS lets owners read their own collections and anon read public ones.
+  // If the collection is private and the viewer isn't the owner, the query
+  // returns no row → notFound().
   const { data: collection, error } = await supabase
     .from("collections")
     .select("*")
@@ -49,6 +51,23 @@ export default async function CollectionDetailPage({
 
   if (error || !collection) notFound();
 
+  const c0 = collection as Collection;
+  const isOwner = !!user && user.id === c0.user_id;
+  // Non-owners may only land here for public collections.
+  if (!isOwner && !c0.is_public) notFound();
+
+  // Fetch the owner's public username for attribution. Profiles are
+  // world-readable, so this works for anonymous viewers too.
+  let ownerUsername: string | null = null;
+  if (!isOwner) {
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("username")
+      .eq("user_id", c0.user_id)
+      .maybeSingle();
+    ownerUsername = (profile?.username as string | undefined) ?? null;
+  }
+
   const { data: cards } = await supabase
     .from("collection_cards")
     .select("*")
@@ -56,7 +75,7 @@ export default async function CollectionDetailPage({
     .order("position", { ascending: true, nullsFirst: false })
     .order("added_at", { ascending: false });
 
-  const c = collection as Collection;
+  const c = c0;
   const items = (cards ?? []) as CollectionCard[];
   const totalQty = items.reduce((acc, x) => acc + (x.quantity ?? 1), 0);
 
@@ -74,10 +93,11 @@ export default async function CollectionDetailPage({
     <div className="flex flex-col gap-8">
       <div className="text-sm text-ink-400">
         <Link
-          href="/collections"
+          href={isOwner ? "/collections" : "/browse"}
           className="inline-flex items-center gap-1 transition hover:text-ink-100"
         >
-          <span aria-hidden>←</span> All collections
+          <span aria-hidden>←</span>{" "}
+          {isOwner ? "All collections" : "Browse"}
         </Link>
       </div>
 
@@ -128,6 +148,12 @@ export default async function CollectionDetailPage({
             <p className="mt-3 text-xs text-ink-400">
               {items.length} unique · {totalQty} total · created{" "}
               {new Date(c.created_at).toLocaleDateString()}
+              {!isOwner && ownerUsername && (
+                <>
+                  {" · built by "}
+                  <span className="text-violet-200">@{ownerUsername}</span>
+                </>
+              )}
             </p>
             <div className="mt-1">
               <Suspense fallback={<CollectionValueSkeleton />}>
@@ -135,20 +161,30 @@ export default async function CollectionDetailPage({
               </Suspense>
             </div>
           </div>
-          <div className="flex items-center gap-2">
-            <Link href={`/collections/${c.id}/edit`} className="btn-ghost">
-              Edit
-            </Link>
-            <form action={deleteCollection}>
-              <input type="hidden" name="id" value={c.id} />
-              <button
-                type="submit"
-                className="btn-ghost text-rose-300 hover:border-rose-400/40"
-              >
-                Delete
-              </button>
-            </form>
-          </div>
+          {isOwner && (
+            <div className="flex items-center gap-2">
+              {c.is_public && (
+                <span
+                  className="chip-violet"
+                  title="Anyone with the link can view this collection"
+                >
+                  Public
+                </span>
+              )}
+              <Link href={`/collections/${c.id}/edit`} className="btn-ghost">
+                Edit
+              </Link>
+              <form action={deleteCollection}>
+                <input type="hidden" name="id" value={c.id} />
+                <button
+                  type="submit"
+                  className="btn-ghost text-rose-300 hover:border-rose-400/40"
+                >
+                  Delete
+                </button>
+              </form>
+            </div>
+          )}
         </div>
       </header>
 
@@ -158,14 +194,16 @@ export default async function CollectionDetailPage({
         </Suspense>
       )}
 
-      <div className="grid gap-3 sm:grid-cols-2">
-        <AddCardsPanel collectionId={c.id} />
-        <ImportExportPanel
-          collectionId={c.id}
-          type={c.type}
-          cards={items}
-        />
-      </div>
+      {isOwner && (
+        <div className="grid gap-3 sm:grid-cols-2">
+          <AddCardsPanel collectionId={c.id} />
+          <ImportExportPanel
+            collectionId={c.id}
+            type={c.type}
+            cards={items}
+          />
+        </div>
+      )}
 
       {c.type === "deck" ? (
         <Suspense fallback={<DeckBoardSkeleton />}>
@@ -173,11 +211,12 @@ export default async function CollectionDetailPage({
             collectionId={c.id}
             cards={items}
             deckFormat={c.deck_format}
+            isOwner={isOwner}
           />
         </Suspense>
       ) : c.type === "bulk" ? (
         <Suspense fallback={<BulkViewSkeleton />}>
-          <BulkView cards={items} />
+          <BulkView cards={items} isOwner={isOwner} />
         </Suspense>
       ) : (
         <CollectionDetailView
@@ -185,6 +224,7 @@ export default async function CollectionDetailPage({
           type={c.type}
           cards={items}
           rawSettings={c.binder_settings}
+          isOwner={isOwner}
         />
       )}
     </div>

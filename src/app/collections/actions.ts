@@ -7,6 +7,7 @@ import {
   COLLECTION_COLORS,
   COLLECTION_TYPES,
   isCollectionColor,
+  validateUsername,
   type CollectionColor,
   type CollectionType,
 } from "@/lib/collections";
@@ -565,6 +566,61 @@ function toArtCropUrl(url: string | null): string | null {
     .replace("/large/", "/art_crop/")
     .replace("/small/", "/art_crop/")
     .replace("/png/", "/art_crop/");
+}
+
+export async function setCollectionVisibility(
+  collectionId: string,
+  isPublic: boolean,
+): Promise<{ ok: true } | { error: string }> {
+  if (!collectionId) return { error: "Missing collection" };
+
+  const supabase = await supabaseServer();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "Not signed in" };
+
+  const { error } = await supabase
+    .from("collections")
+    .update({ is_public: isPublic })
+    .eq("id", collectionId);
+  if (error) return { error: error.message };
+
+  revalidatePath(`/collections/${collectionId}`);
+  revalidatePath("/collections");
+  revalidatePath("/browse");
+  return { ok: true };
+}
+
+export async function setUsername(
+  username: string,
+): Promise<{ ok: true } | { error: string }> {
+  const trimmed = (username ?? "").trim().toLowerCase();
+  const error = validateUsername(trimmed);
+  if (error) return { error };
+
+  const supabase = await supabaseServer();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "Not signed in" };
+
+  // Upsert — first call inserts, subsequent calls update.
+  const { error: dbError } = await supabase
+    .from("profiles")
+    .upsert(
+      { user_id: user.id, username: trimmed },
+      { onConflict: "user_id" },
+    );
+  if (dbError) {
+    // 23505 = unique_violation on the username
+    if (dbError.code === "23505") return { error: "Username already taken." };
+    return { error: dbError.message };
+  }
+
+  revalidatePath("/account");
+  revalidatePath("/browse");
+  return { ok: true };
 }
 
 export type ImportSummary = {

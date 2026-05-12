@@ -130,9 +130,11 @@ function sortInside(list: CollectionCard[]) {
 export function BulkViewClient({
   cards,
   colorMap,
+  isOwner = true,
 }: {
   cards: CollectionCard[];
   colorMap: Record<string, string[]>;
+  isOwner?: boolean;
 }) {
   const [mode, setMode] = useState<Mode>("box");
   const [groupBy, setGroupBy] = useState<GroupBy>("set");
@@ -153,7 +155,7 @@ export function BulkViewClient({
       />
 
       {mode === "grid" ? (
-        <GridView cards={cards} />
+        <GridView cards={cards} isOwner={isOwner} />
       ) : (
         <Box groups={groups} />
       )}
@@ -331,19 +333,31 @@ function DenseCard({ card }: { card: CollectionCard }) {
   );
 }
 
-function GridView({ cards }: { cards: CollectionCard[] }) {
+function GridView({
+  cards,
+  isOwner,
+}: {
+  cards: CollectionCard[];
+  isOwner: boolean;
+}) {
   return (
     <ul className="stagger grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
       {cards.map((item) => (
         <li key={item.id}>
-          <CardEntry item={item} />
+          <CardEntry item={item} isOwner={isOwner} />
         </li>
       ))}
     </ul>
   );
 }
 
-function CardEntry({ item }: { item: CollectionCard }) {
+function CardEntry({
+  item,
+  isOwner,
+}: {
+  item: CollectionCard;
+  isOwner: boolean;
+}) {
   return (
     <div className="surface group overflow-hidden transition hover:border-violet-400/40">
       <Link
@@ -380,20 +394,22 @@ function CardEntry({ item }: { item: CollectionCard }) {
           <span className="chip">×{item.quantity}</span>
           {item.is_foil && <span className="chip-gold">Foil</span>}
         </div>
-        <form action={removeCardFromCollection}>
-          <input type="hidden" name="id" value={item.id} />
-          <input
-            type="hidden"
-            name="collection_id"
-            value={item.collection_id}
-          />
-          <button
-            type="submit"
-            className="btn-subtle text-rose-300 hover:bg-rose-400/10"
-          >
-            Remove
-          </button>
-        </form>
+        {isOwner && (
+          <form action={removeCardFromCollection}>
+            <input type="hidden" name="id" value={item.id} />
+            <input
+              type="hidden"
+              name="collection_id"
+              value={item.collection_id}
+            />
+            <button
+              type="submit"
+              className="btn-subtle text-rose-300 hover:bg-rose-400/10"
+            >
+              Remove
+            </button>
+          </form>
+        )}
       </div>
     </div>
   );

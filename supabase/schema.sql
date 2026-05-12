@@ -72,6 +72,8 @@ alter table public.collections
   add column if not exists cover_scryfall_id text;
 alter table public.collections
   add column if not exists cover_image_url text;
+alter table public.collections
+  add column if not exists is_public boolean not null default false;
 create index if not exists collection_cards_collection_id_idx
   on public.collection_cards(collection_id);
 create index if not exists collection_cards_commander_idx
@@ -138,5 +140,45 @@ create policy "collection_cards_delete_own" on public.collection_cards
     exists (
       select 1 from public.collections c
       where c.id = collection_cards.collection_id and c.user_id = auth.uid()
+    )
+  );
+
+-- Profiles — public-facing username (kept out of auth.users).
+create table if not exists public.profiles (
+  user_id uuid primary key references auth.users on delete cascade,
+  username text unique not null
+    check (
+      char_length(username) between 3 and 30
+      and username ~ '^[a-z0-9_-]+$'
+    ),
+  created_at timestamptz not null default now()
+);
+create index if not exists profiles_username_idx
+  on public.profiles(username);
+alter table public.profiles enable row level security;
+drop policy if exists "profiles_select_all" on public.profiles;
+create policy "profiles_select_all" on public.profiles
+  for select using (true);
+drop policy if exists "profiles_insert_own" on public.profiles;
+create policy "profiles_insert_own" on public.profiles
+  for insert with check (auth.uid() = user_id);
+drop policy if exists "profiles_update_own" on public.profiles;
+create policy "profiles_update_own" on public.profiles
+  for update using (auth.uid() = user_id);
+
+-- Public-collection access: anon may SELECT public rows + their cards.
+create index if not exists collections_public_idx
+  on public.collections(is_public, created_at desc)
+  where is_public = true;
+drop policy if exists "collections_select_public" on public.collections;
+create policy "collections_select_public" on public.collections
+  for select using (is_public = true);
+drop policy if exists "collection_cards_select_public" on public.collection_cards;
+create policy "collection_cards_select_public" on public.collection_cards
+  for select using (
+    exists (
+      select 1 from public.collections c
+      where c.id = collection_cards.collection_id
+        and c.is_public = true
     )
   );
