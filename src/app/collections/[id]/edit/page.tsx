@@ -59,6 +59,22 @@ export default async function EditCollectionPage({
     .maybeSingle();
   const hasUsername = !!profile?.username;
 
+  // Folders — only top-level + nested folders of the current user.
+  // Display flat with a depth marker so users can see structure.
+  const { data: folderRows } = await supabase
+    .from("folders")
+    .select("id, name, parent_folder_id")
+    .order("name");
+  const folders = folderRows ?? [];
+  const topLevel = folders.filter((f) => f.parent_folder_id === null);
+  const childrenByParent = new Map<string, typeof folders>();
+  for (const f of folders) {
+    if (!f.parent_folder_id) continue;
+    const list = childrenByParent.get(f.parent_folder_id) ?? [];
+    list.push(f);
+    childrenByParent.set(f.parent_folder_id, list);
+  }
+
   return (
     <div className="mx-auto max-w-xl">
       <div className="mb-4 text-sm text-ink-400">
@@ -118,6 +134,30 @@ export default async function EditCollectionPage({
 
           <CollectionColorPicker defaultValue={defaultColor} />
 
+          <div>
+            <label
+              htmlFor="folder_id"
+              className="mb-1.5 block text-xs uppercase tracking-wider text-ink-400"
+            >
+              Folder <span className="text-ink-600">(optional)</span>
+            </label>
+            <select
+              id="folder_id"
+              name="folder_id"
+              defaultValue={c.folder_id ?? ""}
+              className="input-field"
+            >
+              <option value="">None</option>
+              {topLevel.map((f) => (
+                <FolderOptions
+                  key={f.id}
+                  folder={f}
+                  children={childrenByParent.get(f.id) ?? []}
+                />
+              ))}
+            </select>
+          </div>
+
           {error && (
             <p className="rounded-md border border-rose-400/40 bg-rose-400/10 px-3 py-2 text-xs text-rose-300">
               {error}
@@ -175,5 +215,24 @@ export default async function EditCollectionPage({
         </div>
       </div>
     </div>
+  );
+}
+
+function FolderOptions({
+  folder,
+  children,
+}: {
+  folder: { id: string; name: string };
+  children: { id: string; name: string }[];
+}) {
+  return (
+    <>
+      <option value={folder.id}>{folder.name}</option>
+      {children.map((child) => (
+        <option key={child.id} value={child.id}>
+          {"    "}↳ {child.name}
+        </option>
+      ))}
+    </>
   );
 }

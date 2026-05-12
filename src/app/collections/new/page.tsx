@@ -10,7 +10,13 @@ import { supabaseConfigured } from "@/lib/supabase/env";
 import { supabaseServer } from "@/lib/supabase/server";
 import { createCollection } from "../actions";
 
-export default async function NewCollectionPage() {
+type Search = Promise<{ folder?: string }>;
+
+export default async function NewCollectionPage({
+  searchParams,
+}: {
+  searchParams: Search;
+}) {
   if (!supabaseConfigured()) redirect("/collections");
 
   const supabase = await supabaseServer();
@@ -18,6 +24,22 @@ export default async function NewCollectionPage() {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) redirect("/auth/login?next=/collections/new");
+
+  const { folder: defaultFolder } = await searchParams;
+
+  const { data: folderRows } = await supabase
+    .from("folders")
+    .select("id, name, parent_folder_id")
+    .order("name");
+  const folders = folderRows ?? [];
+  const topLevel = folders.filter((f) => f.parent_folder_id === null);
+  const childrenByParent = new Map<string, typeof folders>();
+  for (const f of folders) {
+    if (!f.parent_folder_id) continue;
+    const list = childrenByParent.get(f.parent_folder_id) ?? [];
+    list.push(f);
+    childrenByParent.set(f.parent_folder_id, list);
+  }
 
   return (
     <div className="mx-auto max-w-xl">
@@ -102,6 +124,30 @@ export default async function NewCollectionPage() {
 
           <CollectionColorPicker />
 
+          <div>
+            <label
+              htmlFor="folder_id"
+              className="mb-1.5 block text-xs uppercase tracking-wider text-ink-400"
+            >
+              Folder <span className="text-ink-600">(optional)</span>
+            </label>
+            <select
+              id="folder_id"
+              name="folder_id"
+              defaultValue={defaultFolder ?? ""}
+              className="input-field"
+            >
+              <option value="">None</option>
+              {topLevel.map((f) => (
+                <FolderOptions
+                  key={f.id}
+                  folder={f}
+                  children={childrenByParent.get(f.id) ?? []}
+                />
+              ))}
+            </select>
+          </div>
+
           <div className="flex justify-end gap-2">
             <Link href="/collections" className="btn-ghost">
               Cancel
@@ -113,5 +159,24 @@ export default async function NewCollectionPage() {
         </form>
       </div>
     </div>
+  );
+}
+
+function FolderOptions({
+  folder,
+  children,
+}: {
+  folder: { id: string; name: string };
+  children: { id: string; name: string }[];
+}) {
+  return (
+    <>
+      <option value={folder.id}>{folder.name}</option>
+      {children.map((child) => (
+        <option key={child.id} value={child.id}>
+          {"    "}↳ {child.name}
+        </option>
+      ))}
+    </>
   );
 }

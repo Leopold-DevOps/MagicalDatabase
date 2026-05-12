@@ -63,6 +63,15 @@ export type Collection = {
   cover_scryfall_id: string | null;
   cover_image_url: string | null;
   is_public: boolean;
+  folder_id: string | null;
+  created_at: string;
+};
+
+export type Folder = {
+  id: string;
+  user_id: string;
+  name: string;
+  parent_folder_id: string | null;
   created_at: string;
 };
 

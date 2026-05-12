@@ -32,6 +32,8 @@ export async function createCollection(formData: FormData): Promise<void> {
   const color: CollectionColor = isCollectionColor(colorRaw)
     ? colorRaw
     : "arcane";
+  const rawFolder = field(formData, "folder_id");
+  const folderId = rawFolder === "" ? null : rawFolder;
 
   if (!name) redirect("/collections/new?error=name");
   if (!COLLECTION_TYPES.includes(type)) redirect("/collections/new?error=type");
@@ -44,7 +46,14 @@ export async function createCollection(formData: FormData): Promise<void> {
 
   const { data, error } = await supabase
     .from("collections")
-    .insert({ name, type, description, color, user_id: user.id })
+    .insert({
+      name,
+      type,
+      description,
+      color,
+      folder_id: folderId,
+      user_id: user.id,
+    })
     .select("id")
     .single();
 
@@ -62,6 +71,9 @@ export async function updateCollection(formData: FormData): Promise<void> {
   const color: CollectionColor = isCollectionColor(colorRaw)
     ? colorRaw
     : "arcane";
+  // "" sentinel means "no folder"; any other value is the folder id.
+  const rawFolder = field(formData, "folder_id");
+  const folderId = rawFolder === "" ? null : rawFolder;
 
   if (!id) redirect("/collections");
   if (!name) redirect(`/collections/${id}/edit?error=${encodeURIComponent("Name is required.")}`);
@@ -76,7 +88,7 @@ export async function updateCollection(formData: FormData): Promise<void> {
 
   const { data, error } = await supabase
     .from("collections")
-    .update({ name, description, color })
+    .update({ name, description, color, folder_id: folderId })
     .eq("id", id)
     .select()
     .maybeSingle();
@@ -773,4 +785,126 @@ export async function importDecklist(
 
   revalidatePath(`/collections/${collectionId}`);
   return { ok: true, summary };
+}
+
+/**
+ * Create a folder. parentFolderId is optional and may only point to a
+ * top-level folder (one whose parent_folder_id is null) — folders may
+ * nest at most one level deep.
+ */
+export async function createFolder(
+  name: string,
+  parentFolderId: string | null,
+): Promise<{ ok: true; id: string } | { error: string }> {
+  const trimmed = (name ?? "").trim();
+  if (!trimmed) return { error: "Folder name is required" };
+  if (trimmed.length > 80) return { error: "Folder name is too long" };
+
+  const supabase = await supabaseServer();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "Not signed in" };
+
+  if (parentFolderId) {
+    const { data: parent } = await supabase
+      .from("folders")
+      .select("id, parent_folder_id")
+      .eq("id", parentFolderId)
+      .maybeSingle();
+    if (!parent) return { error: "Parent folder not found" };
+    if (parent.parent_folder_id !== null) {
+      return { error: "Folders may only nest one level deep" };
+    }
+  }
+
+  const { data, error } = await supabase
+    .from("folders")
+    .insert({
+      user_id: user.id,
+      name: trimmed,
+      parent_folder_id: parentFolderId,
+    })
+    .select("id")
+    .single();
+  if (error) return { error: error.message };
+
+  revalidatePath("/collections");
+  return { ok: true, id: data!.id as string };
+}
+
+export async function renameFolder(
+  folderId: string,
+  name: string,
+): Promise<{ ok: true } | { error: string }> {
+  const trimmed = (name ?? "").trim();
+  if (!folderId) return { error: "Missing folder" };
+  if (!trimmed) return { error: "Folder name is required" };
+  if (trimmed.length > 80) return { error: "Folder name is too long" };
+
+  const supabase = await supabaseServer();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "Not signed in" };
+
+  const { error } = await supabase
+    .from("folders")
+    .update({ name: trimmed })
+    .eq("id", folderId);
+  if (error) return { error: error.message };
+  revalidatePath("/collections");
+  return { ok: true };
+}
+
+export async function deleteFolder(
+  folderId: string,
+): Promise<{ ok: true } | { error: string }> {
+  if (!folderId) return { error: "Missing folder" };
+  const supabase = await supabaseServer();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "Not signed in" };
+
+  // ON DELETE CASCADE on parent_folder_id removes subfolders.
+  // ON DELETE SET NULL on collections.folder_id drops collections back
+  // to the root.
+  const { error } = await supabase
+    .from("folders")
+    .delete()
+    .eq("id", folderId);
+  if (error) return { error: error.message };
+  revalidatePath("/collections");
+  return { ok: true };
+}
+
+export async function setCollectionFolder(
+  collectionId: string,
+  folderId: string | null,
+): Promise<{ ok: true } | { error: string }> {
+  if (!collectionId) return { error: "Missing collection" };
+  const supabase = await supabaseServer();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "Not signed in" };
+
+  if (folderId) {
+    const { data: folder } = await supabase
+      .from("folders")
+      .select("id")
+      .eq("id", folderId)
+      .maybeSingle();
+    if (!folder) return { error: "Folder not found" };
+  }
+
+  const { error } = await supabase
+    .from("collections")
+    .update({ folder_id: folderId })
+    .eq("id", collectionId);
+  if (error) return { error: error.message };
+  revalidatePath("/collections");
+  revalidatePath(`/collections/${collectionId}`);
+  return { ok: true };
 }
