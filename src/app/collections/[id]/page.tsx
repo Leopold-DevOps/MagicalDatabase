@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { Suspense } from "react";
 import { AddCardsPanel } from "@/components/AddCardsPanel";
+import { BulkView, BulkViewSkeleton } from "@/components/bulk/BulkView";
 import { CollectionDetailView } from "@/components/CollectionDetailView";
 import {
   CollectionValue,
@@ -141,6 +142,10 @@ export default async function CollectionDetailPage({
             cards={items}
             deckFormat={c.deck_format}
           />
+        </Suspense>
+      ) : c.type === "bulk" ? (
+        <Suspense fallback={<BulkViewSkeleton />}>
+          <BulkView cards={items} />
         </Suspense>
       ) : (
         <CollectionDetailView
