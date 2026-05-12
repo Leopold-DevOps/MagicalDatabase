@@ -502,8 +502,8 @@ export async function setCommander(
 /**
  * Set or clear the cover image for a collection. The chosen card must
  * still exist in the collection — we look it up by id+collection_id and
- * copy its scryfall_id + image_url onto the collection row. Pass null
- * to clear.
+ * store its scryfall_id + the art-only image variant on the collection
+ * row. Pass null to clear.
  */
 export async function setCollectionCover(
   collectionId: string,
@@ -540,7 +540,7 @@ export async function setCollectionCover(
     .from("collections")
     .update({
       cover_scryfall_id: card.scryfall_id,
-      cover_image_url: card.image_url,
+      cover_image_url: toArtCropUrl(card.image_url),
     })
     .eq("id", collectionId);
   if (error) return { error: error.message };
@@ -548,6 +548,23 @@ export async function setCollectionCover(
   revalidatePath(`/collections/${collectionId}`);
   revalidatePath("/collections");
   return { ok: true };
+}
+
+/**
+ * Scryfall serves image variants at predictable paths — swapping the
+ * `/normal/` or `/large/` segment for `/art_crop/` yields the art-only
+ * crop (no card frame, no name, no text box), which makes a much
+ * better banner than a tiny full-card thumbnail. Non-Scryfall URLs
+ * pass through untouched.
+ */
+function toArtCropUrl(url: string | null): string | null {
+  if (!url) return null;
+  if (!url.includes("scryfall")) return url;
+  return url
+    .replace("/normal/", "/art_crop/")
+    .replace("/large/", "/art_crop/")
+    .replace("/small/", "/art_crop/")
+    .replace("/png/", "/art_crop/");
 }
 
 export type ImportSummary = {

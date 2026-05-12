@@ -1,8 +1,10 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { CollectionColorPicker } from "@/components/CollectionColorPicker";
+import { CoverPicker } from "@/components/CoverPicker";
 import {
   type Collection,
+  type CollectionCard,
   COLLECTION_TYPE_LABEL,
   isCollectionColor,
 } from "@/lib/collections";
@@ -40,6 +42,14 @@ export default async function EditCollectionPage({
   if (dbError || !data) notFound();
   const c = data as Collection;
   const defaultColor = isCollectionColor(c.color) ? c.color : "arcane";
+
+  const { data: cardRows } = await supabase
+    .from("collection_cards")
+    .select("*")
+    .eq("collection_id", id)
+    .order("is_commander", { ascending: false })
+    .order("added_at", { ascending: false });
+  const cards = (cardRows ?? []) as CollectionCard[];
 
   return (
     <div className="mx-auto max-w-xl">
@@ -115,6 +125,37 @@ export default async function EditCollectionPage({
             </button>
           </div>
         </form>
+
+        {/* Cover lives outside the form because it saves immediately via its
+            own server action and shouldn't be tied to the form's submit. */}
+        <div className="mt-6 border-t border-ink-800/60 pt-5">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <p className="text-xs uppercase tracking-wider text-ink-400">
+                Cover image
+              </p>
+              <p className="mt-1 text-xs text-ink-500">
+                Pick a card from this collection — its artwork becomes the
+                banner on the detail page and the index tile.
+              </p>
+            </div>
+            <CoverPicker
+              collectionId={c.id}
+              cards={cards}
+              currentScryfallId={c.cover_scryfall_id}
+              hasCover={!!c.cover_image_url}
+            />
+          </div>
+          {c.cover_image_url && (
+            <div className="mt-3 overflow-hidden rounded-md ring-1 ring-ink-800/70">
+              <div
+                className="h-24 w-full bg-cover bg-center"
+                style={{ backgroundImage: `url(${c.cover_image_url})` }}
+                aria-hidden
+              />
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

@@ -8,7 +8,6 @@ import {
   CollectionValue,
   CollectionValueSkeleton,
 } from "@/components/CollectionValue";
-import { CoverPicker } from "@/components/CoverPicker";
 import { DeckBoard, DeckBoardSkeleton } from "@/components/DeckBoard";
 import { ImportExportPanel } from "@/components/ImportExportPanel";
 import { ManaCurve, ManaCurveSkeleton } from "@/components/ManaCurve";
@@ -137,12 +136,6 @@ export default async function CollectionDetailPage({
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <CoverPicker
-              collectionId={c.id}
-              cards={items}
-              currentScryfallId={c.cover_scryfall_id}
-              hasCover={!!c.cover_image_url}
-            />
             <Link href={`/collections/${c.id}/edit`} className="btn-ghost">
               Edit
             </Link>

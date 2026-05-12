@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { useEffect, useRef, useState, useTransition } from "react";
+import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { setCollectionCover } from "@/app/collections/actions";
 import type { CollectionCard } from "@/lib/collections";
 
@@ -20,6 +20,14 @@ export function CoverPicker({
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const dialogRef = useRef<HTMLDivElement | null>(null);
+
+  // Sort the deck's commander to the front so it's always one click away,
+  // then current cover, then everything else preserved in insertion order.
+  const sortedCards = useMemo(() => {
+    const commanders = cards.filter((c) => c.is_commander);
+    const rest = cards.filter((c) => !c.is_commander);
+    return [...commanders, ...rest];
+  }, [cards]);
 
   useEffect(() => {
     if (!open) return;
@@ -72,7 +80,8 @@ export function CoverPicker({
                   Choose cover
                 </h2>
                 <p className="mt-0.5 text-xs text-ink-400">
-                  Pick a card from this collection to use as the banner image.
+                  Pick any card from this collection — its artwork becomes the
+                  banner.
                 </p>
               </div>
               <button
@@ -91,13 +100,13 @@ export function CoverPicker({
               </p>
             )}
 
-            {cards.length === 0 ? (
+            {sortedCards.length === 0 ? (
               <p className="py-10 text-center text-sm text-ink-500">
                 This collection has no cards yet. Add one first.
               </p>
             ) : (
               <ul className="grid grid-cols-3 gap-2 overflow-y-auto sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6">
-                {cards.map((card) => {
+                {sortedCards.map((card) => {
                   const isCurrent = card.scryfall_id === currentScryfallId;
                   return (
                     <li key={card.id}>
@@ -108,7 +117,9 @@ export function CoverPicker({
                         className={`group relative block w-full overflow-hidden rounded-md ring-1 transition disabled:opacity-50 ${
                           isCurrent
                             ? "ring-2 ring-violet-300 shadow-glow"
-                            : "ring-ink-800/70 hover:ring-violet-400/60"
+                            : card.is_commander
+                              ? "ring-amber-400/60 hover:ring-amber-300"
+                              : "ring-ink-800/70 hover:ring-violet-400/60"
                         }`}
                         aria-label={`Set ${card.card_name} as cover`}
                       >
@@ -127,11 +138,15 @@ export function CoverPicker({
                             </div>
                           )}
                         </div>
-                        {isCurrent && (
+                        {isCurrent ? (
                           <span className="absolute left-1 top-1 rounded-full bg-violet-500/85 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-white">
                             Current
                           </span>
-                        )}
+                        ) : card.is_commander ? (
+                          <span className="absolute left-1 top-1 rounded-full bg-amber-500/85 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-ink-950">
+                            Commander
+                          </span>
+                        ) : null}
                       </button>
                     </li>
                   );
