@@ -10,6 +10,7 @@ import {
   type CollectionColor,
   type CollectionType,
 } from "@/lib/collections";
+import { isDeckFormat } from "@/lib/deck";
 import { supabaseServer } from "@/lib/supabase/server";
 
 function field(formData: FormData, key: string) {
@@ -430,4 +431,65 @@ export async function moveCard(
     revalidatePath(`/collections/${collectionId}`);
     return { ok: true, newId };
   }
+}
+
+export async function setDeckFormat(
+  collectionId: string,
+  format: string,
+): Promise<{ ok: true } | { error: string }> {
+  if (!collectionId) return { error: "Missing collection" };
+  if (!isDeckFormat(format)) return { error: "Unknown format" };
+
+  const supabase = await supabaseServer();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "Not signed in" };
+
+  const { error } = await supabase
+    .from("collections")
+    .update({ deck_format: format })
+    .eq("id", collectionId);
+  if (error) return { error: error.message };
+
+  revalidatePath(`/collections/${collectionId}`);
+  return { ok: true };
+}
+
+/**
+ * Toggle a card as the deck's commander. Only one card may be the
+ * commander at a time, so we clear any other is_commander rows in the
+ * same collection first.
+ */
+export async function setCommander(
+  collectionId: string,
+  cardId: string,
+  makeCommander: boolean,
+): Promise<{ ok: true } | { error: string }> {
+  if (!collectionId || !cardId) return { error: "Missing args" };
+
+  const supabase = await supabaseServer();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "Not signed in" };
+
+  if (makeCommander) {
+    const clear = await supabase
+      .from("collection_cards")
+      .update({ is_commander: false })
+      .eq("collection_id", collectionId)
+      .eq("is_commander", true);
+    if (clear.error) return { error: clear.error.message };
+  }
+
+  const { error } = await supabase
+    .from("collection_cards")
+    .update({ is_commander: makeCommander })
+    .eq("id", cardId)
+    .eq("collection_id", collectionId);
+  if (error) return { error: error.message };
+
+  revalidatePath(`/collections/${collectionId}`);
+  return { ok: true };
 }

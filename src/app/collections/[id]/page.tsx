@@ -136,7 +136,11 @@ export default async function CollectionDetailPage({
 
       {c.type === "deck" ? (
         <Suspense fallback={<DeckBoardSkeleton />}>
-          <DeckBoard cards={items} />
+          <DeckBoard
+            collectionId={c.id}
+            cards={items}
+            deckFormat={c.deck_format}
+          />
         </Suspense>
       ) : (
         <CollectionDetailView

@@ -64,8 +64,15 @@ alter table public.collection_cards
   add column if not exists pocket_index int;
 alter table public.collection_cards
   add column if not exists is_foil boolean not null default false;
+alter table public.collection_cards
+  add column if not exists is_commander boolean not null default false;
+alter table public.collections
+  add column if not exists deck_format text not null default 'casual';
 create index if not exists collection_cards_collection_id_idx
   on public.collection_cards(collection_id);
+create index if not exists collection_cards_commander_idx
+  on public.collection_cards(collection_id)
+  where is_commander = true;
 create index if not exists collection_cards_position_idx
   on public.collection_cards(collection_id, position);
 create index if not exists collection_cards_page_pocket_idx

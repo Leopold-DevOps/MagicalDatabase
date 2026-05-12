@@ -59,6 +59,7 @@ export type Collection = {
   description: string | null;
   color: CollectionColor;
   binder_settings: Record<string, unknown> | null;
+  deck_format: string | null;
   created_at: string;
 };
 
@@ -75,6 +76,7 @@ export type CollectionCard = {
   page_index: number | null;
   pocket_index: number | null;
   is_foil: boolean;
+  is_commander: boolean;
   added_at: string;
 };
 
