@@ -6,16 +6,16 @@ const config: Config = {
     extend: {
       colors: {
         ink: {
-          50: "#fdfcff",
-          100: "#f4eeff",
-          200: "#e3d8fa",
-          300: "#c5b3ed",
+          50: "#ffffff",
+          100: "#f7f1ff",
+          200: "#ece1ff",
+          300: "#cebcf2",
           400: "#9c87cf",
           500: "#7461a8",
           600: "#52447f",
-          700: "#382b5b",
-          800: "#221742",
-          900: "#150d2e",
+          700: "#3c2e62",
+          800: "#241848",
+          900: "#160e33",
           950: "#0c071f",
         },
         violet: {
@@ -30,9 +30,11 @@ const config: Config = {
           400: "#fb7185",
         },
         gold: {
+          200: "#fde68a",
           300: "#fcd34d",
           400: "#fbbf24",
           500: "#f59e0b",
+          600: "#d97706",
         },
       },
       fontFamily: {
@@ -49,7 +51,9 @@ const config: Config = {
       boxShadow: {
         ring: "0 0 0 1px rgba(139, 92, 246, 0.4)",
         soft: "0 1px 0 rgba(255,255,255,0.05) inset, 0 12px 40px rgba(8, 5, 22, 0.55)",
-        glow: "0 0 0 1px rgba(167, 139, 250, 0.18), 0 10px 40px -10px rgba(168, 85, 247, 0.35)",
+        glow: "0 0 0 1px rgba(167, 139, 250, 0.22), 0 10px 40px -10px rgba(168, 85, 247, 0.45)",
+        "glow-gold":
+          "0 0 0 1px rgba(251, 191, 36, 0.30), 0 10px 30px -8px rgba(251, 191, 36, 0.45)",
       },
       animation: {
         "fade-in-up": "fade-in-up 0.35s ease-out both",

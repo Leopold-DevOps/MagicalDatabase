@@ -35,11 +35,11 @@ export default function RootLayout({
             <Link href="/" className="group flex items-center gap-2.5">
               <span
                 aria-hidden
-                className="grid h-8 w-8 place-items-center rounded-lg bg-gradient-to-br from-violet-400 via-violet-500 to-violet-700 text-sm font-semibold text-white shadow-glow transition group-hover:from-violet-300 group-hover:to-violet-600"
+                className="grid h-8 w-8 place-items-center rounded-lg bg-gradient-to-br from-violet-400 via-violet-500 to-violet-700 text-sm font-semibold text-gold-200 shadow-glow ring-1 ring-gold-300/30 transition group-hover:from-violet-300 group-hover:to-violet-600 group-hover:text-gold-100 group-hover:ring-gold-300/60"
               >
                 ✦
               </span>
-              <span className="font-display text-lg tracking-wide text-ink-50">
+              <span className="font-display text-lg tracking-wide text-ink-50 transition group-hover:text-white">
                 Magical Database
               </span>
             </Link>
