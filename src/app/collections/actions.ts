@@ -584,7 +584,7 @@ export type ImportSummary = {
 export async function importDecklist(
   collectionId: string,
   text: string,
-  options: { allowCommander?: boolean } = {},
+  options: { allowCommander?: boolean; replace?: boolean } = {},
 ): Promise<{ ok: true; summary: ImportSummary } | { error: string }> {
   if (!collectionId) return { error: "Missing collection" };
   if (!text || !text.trim()) return { error: "Nothing to import" };
@@ -609,7 +609,8 @@ export async function importDecklist(
   }
 
   // Build identifiers — prefer (set, collector_number) when both are
-  // present, else (name, set), else (name).
+  // present, else (name, set), else (name). Done before the destructive
+  // delete so a Scryfall outage doesn't wipe the collection.
   const identifiers: ScryfallIdentifier[] = parsed.items.map((it) => {
     if (it.set && it.collectorNumber) {
       return {
@@ -626,6 +627,17 @@ export async function importDecklist(
     resolved = await resolveCardIdentifiers(identifiers);
   } catch (err) {
     return { error: `Scryfall lookup failed: ${(err as Error).message}` };
+  }
+
+  // Replace mode: now that we have a resolved list to insert, it's safe to
+  // wipe what's there. The cover_image_url on the collection row survives
+  // because it's a URL string, not a row reference.
+  if (options.replace === true) {
+    const del = await supabase
+      .from("collection_cards")
+      .delete()
+      .eq("collection_id", collectionId);
+    if (del.error) return { error: del.error.message };
   }
 
   // Match resolved cards back to parsed items by name (case-insensitive,

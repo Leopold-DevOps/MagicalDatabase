@@ -226,6 +226,7 @@ function ImportTab({
   type: CollectionType;
 }) {
   const [text, setText] = useState("");
+  const [replace, setReplace] = useState(false);
   const [result, setResult] = useState<
     | { kind: "ok"; added: number; matched: number; notFound: string[]; unparsed: string[] }
     | { kind: "error"; message: string }
@@ -235,10 +236,19 @@ function ImportTab({
 
   function submit() {
     if (!text.trim()) return;
+    if (
+      replace &&
+      !window.confirm(
+        "Replace every card currently in this collection with the imported list? This can't be undone.",
+      )
+    ) {
+      return;
+    }
     setResult(null);
     startTransition(async () => {
       const r = await importDecklist(collectionId, text, {
         allowCommander: type === "deck",
+        replace,
       });
       if ("error" in r) {
         setResult({ kind: "error", message: r.error });
@@ -289,14 +299,43 @@ function ImportTab({
         className="input-field h-48 w-full resize-y font-mono text-xs leading-relaxed"
       />
 
-      <div className="flex items-center justify-end">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <label className="flex cursor-pointer items-center gap-2 text-xs">
+          <input
+            type="checkbox"
+            checked={replace}
+            onChange={(e) => setReplace(e.target.checked)}
+            disabled={isPending}
+            className="accent-rose-400"
+          />
+          <span
+            className={
+              replace ? "font-medium text-rose-300" : "text-ink-400"
+            }
+          >
+            Replace existing cards
+          </span>
+          {replace && (
+            <span className="text-[10px] text-rose-400/80">
+              wipes the collection first
+            </span>
+          )}
+        </label>
         <button
           type="button"
           onClick={submit}
           disabled={isPending || !text.trim()}
-          className="btn-primary py-1 px-4 text-xs disabled:opacity-50"
+          className={`py-1 px-4 text-xs disabled:opacity-50 ${
+            replace
+              ? "rounded-md border border-rose-400/50 bg-rose-500/15 font-medium text-rose-200 transition hover:bg-rose-500/25"
+              : "btn-primary"
+          }`}
         >
-          {isPending ? "Importing…" : "Import"}
+          {isPending
+            ? "Importing…"
+            : replace
+              ? "Replace & import"
+              : "Import"}
         </button>
       </div>
 
