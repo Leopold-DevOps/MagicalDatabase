@@ -27,6 +27,12 @@ export type Theme = {
     "--theme-accent": string;
     "--theme-accent-soft": string;
   };
+  // Backdrop art for the home-page hero. Uses Scryfall's named redirect
+  // (CSS bg-image follows the 302 to the real /art_crop/ asset), so we
+  // never have to hand-maintain UUIDs. credit is the card name behind
+  // the art.
+  artUrl: string;
+  artCredit: string;
 };
 
 export const THEME_LIST: Theme[] = [
@@ -43,6 +49,9 @@ export const THEME_LIST: Theme[] = [
       "--theme-accent": "#fbbf24",
       "--theme-accent-soft": "rgba(251, 191, 36, 0.18)",
     },
+    artUrl:
+      "https://api.scryfall.com/cards/named?exact=Sol+Ring&format=image&version=art_crop",
+    artCredit: "Sol Ring",
   },
   {
     id: "bloomburrow",
@@ -57,6 +66,9 @@ export const THEME_LIST: Theme[] = [
       "--theme-accent": "#84cc16",
       "--theme-accent-soft": "rgba(132, 204, 22, 0.22)",
     },
+    artUrl:
+      "https://api.scryfall.com/cards/named?exact=Three+Tree+City&format=image&version=art_crop",
+    artCredit: "Three Tree City",
   },
   {
     id: "strixhaven",
@@ -71,6 +83,9 @@ export const THEME_LIST: Theme[] = [
       "--theme-accent": "#5eead4",
       "--theme-accent-soft": "rgba(94, 234, 212, 0.22)",
     },
+    artUrl:
+      "https://api.scryfall.com/cards/named?exact=Strixhaven%2C+School+of+Mages&format=image&version=art_crop",
+    artCredit: "Strixhaven, School of Mages",
   },
   {
     id: "phyrexia",
@@ -85,6 +100,9 @@ export const THEME_LIST: Theme[] = [
       "--theme-accent": "#f43f5e",
       "--theme-accent-soft": "rgba(244, 63, 94, 0.20)",
     },
+    artUrl:
+      "https://api.scryfall.com/cards/named?exact=Elesh+Norn%2C+Mother+of+Machines&format=image&version=art_crop",
+    artCredit: "Elesh Norn, Mother of Machines",
   },
   {
     id: "innistrad",
@@ -99,6 +117,9 @@ export const THEME_LIST: Theme[] = [
       "--theme-accent": "#94a3b8",
       "--theme-accent-soft": "rgba(148, 163, 184, 0.22)",
     },
+    artUrl:
+      "https://api.scryfall.com/cards/named?exact=Avacyn%2C+Angel+of+Hope&format=image&version=art_crop",
+    artCredit: "Avacyn, Angel of Hope",
   },
 ];
 

@@ -1,21 +1,30 @@
+import { cookies } from "next/headers";
 import Link from "next/link";
 import { SearchBar } from "@/components/SearchBar";
+import { ThemeArtCredit, ThemeBackdrop } from "@/components/ThemeBackdrop";
+import { getTheme, rotatingThemeForDate } from "@/lib/themes";
 
-export default function HomePage() {
+export default async function HomePage() {
+  const store = await cookies();
+  const rotate = store.get("theme_rotate")?.value === "1";
+  const explicit = store.get("theme")?.value;
+  const theme = getTheme(rotate ? rotatingThemeForDate() : explicit);
+
   return (
     <div className="flex flex-col gap-20">
-      <section className="relative overflow-hidden">
+      <section className="relative -mx-6 overflow-hidden rounded-2xl px-6 py-20 md:py-28">
+        <ThemeBackdrop theme={theme} />
         <div className="relative z-10 mx-auto max-w-2xl text-center">
           <p className="mb-5 text-xs uppercase tracking-[0.3em] text-violet-300/80">
             A grimoire for planeswalkers
           </p>
-          <h1 className="text-balance font-display text-5xl leading-[1.05] text-ink-50 md:text-6xl">
+          <h1 className="text-balance font-display text-5xl leading-[1.05] text-ink-50 drop-shadow-[0_2px_12px_rgba(0,0,0,0.55)] md:text-6xl">
             Search every card in the
             <span className="block bg-gradient-to-r from-violet-300 via-violet-400 to-violet-300 bg-clip-text pb-2 text-transparent">
               multiverse
             </span>
           </h1>
-          <p className="mx-auto mt-5 max-w-xl text-balance text-base text-ink-400">
+          <p className="mx-auto mt-5 max-w-xl text-balance text-base text-ink-300 drop-shadow-[0_1px_8px_rgba(0,0,0,0.5)]">
             A fast, modern front end for Scryfall — search, browse, and inspect
             any Magic: The Gathering card.
           </p>
@@ -25,18 +34,22 @@ export default function HomePage() {
           </div>
 
           <div className="mt-5 flex flex-wrap items-center justify-center gap-2 text-sm">
-            <span className="text-ink-500">Try</span>
+            <span className="text-ink-400">Try</span>
             {["Black Lotus", "Sol Ring", "Lightning Bolt", "Liliana"].map(
               (q) => (
                 <Link
                   key={q}
                   href={`/cards?q=${encodeURIComponent(q)}`}
-                  className="rounded-md border border-ink-800 px-2.5 py-1 text-xs text-ink-300 transition hover:border-violet-500/50 hover:text-white"
+                  className="rounded-md border border-ink-700/70 bg-ink-950/40 px-2.5 py-1 text-xs text-ink-200 backdrop-blur-sm transition hover:border-violet-500/60 hover:text-white"
                 >
                   {q}
                 </Link>
               ),
             )}
+          </div>
+
+          <div className="mt-10">
+            <ThemeArtCredit theme={theme} />
           </div>
         </div>
       </section>
