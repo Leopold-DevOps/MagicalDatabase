@@ -9,7 +9,14 @@ import {
   normalizeDeckFormat,
   type DeckFormat,
 } from "@/lib/deck";
+import { formatMTGO } from "@/lib/decklist";
 import { getCardsByIds, type ScryfallCard } from "@/lib/scryfall";
+
+export type DeckView = "board" | "grid" | "text";
+const DECK_VIEWS: DeckView[] = ["board", "grid", "text"];
+export function isDeckView(v: string | undefined): v is DeckView {
+  return v === "board" || v === "grid" || v === "text";
+}
 
 type CardType =
   | "Creature"
@@ -65,11 +72,13 @@ export async function DeckBoard({
   cards,
   deckFormat,
   isOwner = true,
+  view = "board",
 }: {
   collectionId: string;
   cards: CollectionCard[];
   deckFormat: string | null;
   isOwner?: boolean;
+  view?: DeckView;
 }) {
   const format: DeckFormat = normalizeDeckFormat(deckFormat);
   const formatInfo = DECK_FORMAT_INFO[format];
@@ -85,6 +94,7 @@ export async function DeckBoard({
           lands={0}
           avgCmc="—"
           isOwner={isOwner}
+          view={view}
         />
         <div className="surface p-10 text-center">
           <p className="text-ink-300">This deck is empty.</p>
@@ -157,6 +167,13 @@ export async function DeckBoard({
 
   const activeGroups = TYPE_ORDER.filter((t) => groups.has(t));
 
+  // Flat ordered list used by Grid + Text views (commanders first, then
+  // by type column order, then by CMC asc / name asc within each type).
+  const flatItems: Item[] = [
+    ...commanderItems,
+    ...activeGroups.flatMap((t) => groups.get(t)!),
+  ];
+
   return (
     <div className="flex flex-col gap-4">
       <SummaryBar
@@ -167,6 +184,7 @@ export async function DeckBoard({
         lands={lands}
         avgCmc={avgCmc}
         isOwner={isOwner}
+        view={view}
       />
 
       {formatInfo.hasCommander && (
@@ -177,26 +195,150 @@ export async function DeckBoard({
         />
       )}
 
-      <div className="grid grid-cols-2 gap-x-4 gap-y-6 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
-        {activeGroups.map((type) => {
-          const items = groups.get(type)!;
-          const count = items.reduce(
-            (acc, x) => acc + (x.card.quantity ?? 1),
-            0,
-          );
-          return (
-            <Column
-              key={type}
-              collectionId={collectionId}
-              type={type}
-              count={count}
-              items={items}
-              showCommanderToggle={formatInfo.hasCommander && isOwner}
-              isOwner={isOwner}
+      {view === "grid" ? (
+        <GridLayout items={flatItems} isOwner={isOwner} />
+      ) : view === "text" ? (
+        <TextLayout
+          commanderItems={commanderItems}
+          groups={groups}
+          activeGroups={activeGroups}
+        />
+      ) : (
+        <div className="grid grid-cols-2 gap-x-4 gap-y-6 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+          {activeGroups.map((type) => {
+            const items = groups.get(type)!;
+            const count = items.reduce(
+              (acc, x) => acc + (x.card.quantity ?? 1),
+              0,
+            );
+            return (
+              <Column
+                key={type}
+                collectionId={collectionId}
+                type={type}
+                count={count}
+                items={items}
+                showCommanderToggle={formatInfo.hasCommander && isOwner}
+                isOwner={isOwner}
+              />
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function GridLayout({ items, isOwner }: { items: Item[]; isOwner: boolean }) {
+  return (
+    <ul className="stagger grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
+      {items.map((item) => (
+        <li key={item.card.id}>
+          <GridCard item={item} isOwner={isOwner} />
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+function GridCard({ item, isOwner }: { item: Item; isOwner: boolean }) {
+  const { card } = item;
+  return (
+    <div className="group relative">
+      <Link
+        href={`/cards/${card.scryfall_id}`}
+        prefetch={false}
+        className="block overflow-hidden rounded-md ring-1 ring-ink-800/70 transition hover:ring-violet-400/60 hover:shadow-glow"
+      >
+        <div className="relative aspect-[5/7] w-full bg-ink-950">
+          {card.image_url ? (
+            <Image
+              src={card.image_url}
+              alt={card.card_name}
+              fill
+              sizes="(max-width: 640px) 50vw, (max-width: 1024px) 25vw, 180px"
+              className="object-cover"
             />
-          );
-        })}
-      </div>
+          ) : (
+            <div className="grid h-full place-items-center px-2 text-center text-xs text-ink-300">
+              {card.card_name}
+            </div>
+          )}
+        </div>
+      </Link>
+      {(card.quantity ?? 1) > 1 && (
+        <span className="absolute right-1 top-1 rounded-full bg-black/75 px-1.5 py-0.5 text-[10px] font-semibold text-white shadow-sm">
+          ×{card.quantity}
+        </span>
+      )}
+      {card.is_commander && (
+        <span className="absolute left-1 top-1 rounded-full bg-amber-500/85 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-ink-950">
+          CMD
+        </span>
+      )}
+      {card.is_foil && !card.is_commander && (
+        <span className="absolute left-1 top-1 rounded-full bg-black/65 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-amber-200">
+          Foil
+        </span>
+      )}
+      {isOwner && (
+        <form
+          action={removeCardFromCollection}
+          className="absolute inset-x-1 bottom-1 flex justify-center opacity-0 transition group-hover:opacity-100"
+        >
+          <input type="hidden" name="id" value={card.id} />
+          <input
+            type="hidden"
+            name="collection_id"
+            value={card.collection_id}
+          />
+          <button
+            type="submit"
+            className="rounded-md border border-rose-400/40 bg-ink-950/85 px-2 py-0.5 text-[10px] font-medium text-rose-300 backdrop-blur-sm transition hover:bg-rose-500/20"
+          >
+            Remove
+          </button>
+        </form>
+      )}
+    </div>
+  );
+}
+
+function TextLayout({
+  commanderItems,
+  groups,
+  activeGroups,
+}: {
+  commanderItems: Item[];
+  groups: Map<CardType, Item[]>;
+  activeGroups: CardType[];
+}) {
+  // Reuse the MTGO formatter so the text output matches what users get
+  // from the Export tab — single source of truth.
+  const mainItems = activeGroups.flatMap((t) => groups.get(t) ?? []);
+  const text = formatMTGO([
+    ...commanderItems.map((i) => ({
+      qty: i.card.quantity ?? 1,
+      name: i.card.card_name,
+      foil: i.card.is_foil,
+      isCommander: true,
+    })),
+    ...mainItems.map((i) => ({
+      qty: i.card.quantity ?? 1,
+      name: i.card.card_name,
+      foil: i.card.is_foil,
+      isCommander: false,
+    })),
+  ]);
+
+  return (
+    <div className="surface p-4">
+      <p className="mb-3 text-xs uppercase tracking-wider text-ink-400">
+        Decklist
+      </p>
+      <pre className="overflow-x-auto whitespace-pre-wrap break-words font-mono text-sm leading-relaxed text-ink-100">
+        {text}
+      </pre>
     </div>
   );
 }
@@ -209,6 +351,7 @@ function SummaryBar({
   lands,
   avgCmc,
   isOwner,
+  view,
 }: {
   collectionId: string;
   format: DeckFormat;
@@ -217,25 +360,66 @@ function SummaryBar({
   lands: number;
   avgCmc: string;
   isOwner: boolean;
+  view: DeckView;
 }) {
   const limit = DECK_FORMAT_INFO[format].limit;
   const over = limit !== null && total > limit;
   return (
-    <div className="surface flex flex-wrap items-center gap-x-8 gap-y-2 p-4 text-sm">
-      <CountStat total={total} limit={limit} over={over} />
-      <Stat label="Non-lands" value={nonLands} />
-      <Stat label="Lands" value={lands} />
-      <Stat label="Avg CMC" value={avgCmc} />
-      <div className="ml-auto">
-        {isOwner ? (
-          <DeckFormatSelector collectionId={collectionId} current={format} />
-        ) : (
-          <span className="text-xs text-ink-500">
-            <span className="uppercase tracking-wider">Format</span>{" "}
-            <span className="text-ink-200">{DECK_FORMAT_INFO[format].label}</span>
-          </span>
-        )}
+    <div className="surface flex flex-col gap-3 p-4 text-sm">
+      <div className="flex flex-wrap items-center gap-x-8 gap-y-2">
+        <CountStat total={total} limit={limit} over={over} />
+        <Stat label="Non-lands" value={nonLands} />
+        <Stat label="Lands" value={lands} />
+        <Stat label="Avg CMC" value={avgCmc} />
+        <div className="ml-auto">
+          {isOwner ? (
+            <DeckFormatSelector collectionId={collectionId} current={format} />
+          ) : (
+            <span className="text-xs text-ink-500">
+              <span className="uppercase tracking-wider">Format</span>{" "}
+              <span className="text-ink-200">
+                {DECK_FORMAT_INFO[format].label}
+              </span>
+            </span>
+          )}
+        </div>
       </div>
+      <ViewTabs current={view} />
+    </div>
+  );
+}
+
+const VIEW_LABEL: Record<DeckView, string> = {
+  board: "Board",
+  grid: "Grid",
+  text: "Text",
+};
+
+function ViewTabs({ current }: { current: DeckView }) {
+  return (
+    <div className="flex items-center gap-1 text-xs">
+      <span className="text-[10px] uppercase tracking-wider text-ink-500">
+        View
+      </span>
+      {DECK_VIEWS.map((v) => {
+        const active = v === current;
+        // Default ("board") drops the param to keep the URL clean.
+        const href = v === "board" ? "?" : `?view=${v}`;
+        return (
+          <Link
+            key={v}
+            href={href}
+            scroll={false}
+            className={`rounded-md border px-2.5 py-1 transition ${
+              active
+                ? "border-violet-400 bg-violet-500/15 text-white"
+                : "border-ink-700 text-ink-300 hover:border-violet-400/50 hover:text-white"
+            }`}
+          >
+            {VIEW_LABEL[v]}
+          </Link>
+        );
+      })}
     </div>
   );
 }

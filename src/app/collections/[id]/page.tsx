@@ -8,7 +8,7 @@ import {
   CollectionValue,
   CollectionValueSkeleton,
 } from "@/components/CollectionValue";
-import { DeckBoard, DeckBoardSkeleton } from "@/components/DeckBoard";
+import { DeckBoard, DeckBoardSkeleton, isDeckView } from "@/components/DeckBoard";
 import { ImportExportPanel } from "@/components/ImportExportPanel";
 import { ManaCurve, ManaCurveSkeleton } from "@/components/ManaCurve";
 import {
@@ -26,13 +26,18 @@ import { supabaseServer } from "@/lib/supabase/server";
 import { deleteCollection } from "../actions";
 
 type Params = Promise<{ id: string }>;
+type Search = Promise<{ view?: string }>;
 
 export default async function CollectionDetailPage({
   params,
+  searchParams,
 }: {
   params: Params;
+  searchParams: Search;
 }) {
   const { id } = await params;
+  const { view: rawView } = await searchParams;
+  const deckView = isDeckView(rawView) ? rawView : "board";
   if (!supabaseConfigured()) redirect("/collections");
 
   const supabase = await supabaseServer();
@@ -206,12 +211,16 @@ export default async function CollectionDetailPage({
       )}
 
       {c.type === "deck" ? (
-        <Suspense fallback={<DeckBoardSkeleton />}>
+        <Suspense
+          key={`deck-${deckView}`}
+          fallback={<DeckBoardSkeleton />}
+        >
           <DeckBoard
             collectionId={c.id}
             cards={items}
             deckFormat={c.deck_format}
             isOwner={isOwner}
+            view={deckView}
           />
         </Suspense>
       ) : c.type === "bulk" ? (
