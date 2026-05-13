@@ -2,12 +2,14 @@
 
 import {
   DndContext,
+  DragOverlay,
   PointerSensor,
   useDraggable,
   useDroppable,
   useSensor,
   useSensors,
   type DragEndEvent,
+  type DragStartEvent,
 } from "@dnd-kit/core";
 import Image from "next/image";
 import Link from "next/link";
@@ -63,12 +65,23 @@ export function CollectionsExplorer({
   const [folders, setFolders] = useState(initialFolders);
   const [collections, setCollections] = useState(initialCollections);
   const [newFolderOpen, setNewFolderOpen] = useState(false);
+  const [draggingId, setDraggingId] = useState<string | null>(null);
   const [, startTransition] = useTransition();
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
   );
 
+  const draggingCollection = draggingId
+    ? collections.find((c) => c.id === draggingId) ?? null
+    : null;
+
+  function handleDragStart(event: DragStartEvent) {
+    const id = String(event.active.id).replace(/^c-/, "");
+    setDraggingId(id);
+  }
+
   function handleDragEnd(event: DragEndEvent) {
+    setDraggingId(null);
     if (!event.over) return;
     const collectionId = String(event.active.id).replace(/^c-/, "");
     const overId = String(event.over.id);
@@ -95,7 +108,11 @@ export function CollectionsExplorer({
   }
 
   return (
-    <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
+    <DndContext
+      sensors={sensors}
+      onDragStart={handleDragStart}
+      onDragEnd={handleDragEnd}
+    >
       <div className="flex flex-col gap-6">
         <Header
           currentFolderId={currentFolderId}
@@ -175,7 +192,51 @@ export function CollectionsExplorer({
           />
         )}
       </div>
+
+      <DragOverlay dropAnimation={null}>
+        {draggingCollection ? (
+          <DragPreview collection={draggingCollection} />
+        ) : null}
+      </DragOverlay>
     </DndContext>
+  );
+}
+
+function DragPreview({ collection }: { collection: Collection }) {
+  const color: CollectionColor = isCollectionColor(collection.color)
+    ? collection.color
+    : "arcane";
+  const cover = collection.cover_image_url;
+  return (
+    <div className="surface w-64 overflow-hidden rounded-lg shadow-glow ring-2 ring-violet-300 rotate-[-1deg]">
+      {cover ? (
+        <div className="relative h-20 w-full overflow-hidden">
+          <div
+            className="absolute inset-0 bg-cover bg-center"
+            style={{ backgroundImage: `url(${cover})` }}
+            aria-hidden
+          />
+          <div
+            className={`absolute inset-0 bg-gradient-to-br opacity-60 mix-blend-overlay ${COLLECTION_COLOR_GRADIENT[color]}`}
+            aria-hidden
+          />
+          <div
+            className="absolute inset-0 bg-gradient-to-b from-ink-950/30 to-ink-950/80"
+            aria-hidden
+          />
+        </div>
+      ) : (
+        <div
+          className={`h-2 w-full bg-gradient-to-r ${COLLECTION_COLOR_GRADIENT[color]}`}
+          aria-hidden
+        />
+      )}
+      <div className="p-3">
+        <p className="line-clamp-1 text-sm font-semibold text-ink-50">
+          {collection.name}
+        </p>
+      </div>
+    </div>
   );
 }
 

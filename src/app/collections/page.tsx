@@ -140,6 +140,7 @@ export default async function CollectionsPage({
 
   return (
     <CollectionsExplorer
+      key={effectiveFolderId ?? "root"}
       folders={folders}
       collections={collections}
       currentFolderId={effectiveFolderId}
