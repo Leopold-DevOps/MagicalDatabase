@@ -162,10 +162,10 @@ function BrowseTile({
   return (
     <Link
       href={`/collections/${collection.id}`}
-      className="surface group block overflow-hidden transition hover:border-violet-400/40 hover:shadow-glow"
+      className="surface group flex h-60 flex-col overflow-hidden transition hover:border-violet-400/40 hover:shadow-glow"
     >
       {cover ? (
-        <div className="relative h-28 w-full overflow-hidden">
+        <div className="relative h-28 w-full shrink-0 overflow-hidden">
           <div
             className="absolute inset-0 bg-cover bg-center transition duration-500 group-hover:scale-[1.04]"
             style={{ backgroundImage: `url(${cover})` }}
@@ -182,13 +182,13 @@ function BrowseTile({
         </div>
       ) : (
         <div
-          className={`h-2 w-full bg-gradient-to-r ${COLLECTION_COLOR_GRADIENT[color]}`}
+          className={`h-2 w-full shrink-0 bg-gradient-to-r ${COLLECTION_COLOR_GRADIENT[color]}`}
           aria-hidden
         />
       )}
-      <div className="p-5">
+      <div className="flex flex-1 flex-col p-5">
         <div className="flex items-start justify-between gap-3">
-          <h2 className="text-base font-semibold text-ink-50">
+          <h2 className="line-clamp-1 text-base font-semibold text-ink-50">
             {collection.name}
           </h2>
           <span className={chip}>
@@ -200,7 +200,7 @@ function BrowseTile({
             {collection.description}
           </p>
         )}
-        <p className="mt-3 text-xs text-ink-500">
+        <p className="mt-auto pt-3 text-xs text-ink-500">
           by <span className="text-violet-200">@{username}</span>
         </p>
       </div>
