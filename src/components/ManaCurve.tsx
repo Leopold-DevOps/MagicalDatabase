@@ -34,22 +34,28 @@ export async function ManaCurve({ cards }: { cards: CollectionCard[] }) {
         </p>
         <p className="text-[11px] text-ink-500">{total} cards</p>
       </div>
-      <div className="flex h-20 items-end gap-1">
+      <div className="flex items-end gap-1">
         {counts.map((count, i) => {
-          const pct = Math.round((count / max) * 100);
+          const pct = (count / max) * 100;
           return (
             <div
               key={i}
               className="flex flex-1 flex-col items-center gap-1"
             >
-              <div className="relative w-full flex-1 flex items-end">
+              {/* Bar wrapper has an explicit pixel height so the %
+                  height on the inner bar resolves; percentage heights
+                  don't resolve against flex-grow parents. */}
+              <div className="flex h-20 w-full items-end">
                 <div
                   className="w-full rounded-t-sm bg-violet-500/70 transition-all hover:bg-violet-400"
-                  style={{ height: pct === 0 ? "2px" : `${pct}%` }}
+                  style={{ height: count === 0 ? "2px" : `${pct}%` }}
                   title={`${LABELS[i]} mana: ${count} card${count !== 1 ? "s" : ""}`}
                 />
               </div>
               <span className="text-[9px] text-ink-500">{LABELS[i]}</span>
+              <span className="text-[10px] font-medium text-ink-300 tabular-nums">
+                {count}
+              </span>
             </div>
           );
         })}
