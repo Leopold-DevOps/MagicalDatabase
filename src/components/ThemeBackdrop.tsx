@@ -22,10 +22,14 @@ export async function ThemeBackdrop({ theme }: { theme: Theme }) {
     (await resolveScryfallArtCrop(theme.artCredit)) ?? theme.artUrl;
   return (
     <div className="pointer-events-none absolute inset-0 -z-10 overflow-hidden">
-      <div
-        className="absolute -inset-12 bg-cover bg-center opacity-55 blur-2xl"
-        style={{ backgroundImage: `url("${artUrl}")` }}
+      {/* Plain <img> on purpose — decorative, no Next optimization needed,
+          no remotePatterns gate, and easier to debug if it fails to load. */}
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src={artUrl}
+        alt=""
         aria-hidden
+        className="absolute left-1/2 top-1/2 h-[120%] w-[120%] max-w-none -translate-x-1/2 -translate-y-1/2 object-cover opacity-60 blur-2xl"
       />
       <div
         className="absolute inset-0 mix-blend-overlay"
