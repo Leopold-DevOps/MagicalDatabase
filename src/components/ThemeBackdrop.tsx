@@ -1,3 +1,4 @@
+import { resolveScryfallArtCrop } from "@/lib/scryfall-art";
 import type { Theme } from "@/lib/themes";
 
 /**
@@ -11,15 +12,19 @@ import type { Theme } from "@/lib/themes";
  *   3. A second wash with the aurora-top tint for cohesion with the body
  *   4. Top-to-bottom dark fade so the hero text contrasts cleanly
  *
- * The component is purely presentational — drop it as the first child
- * inside any `relative` container and it pins absolute.
+ * Resolves the art URL server-side via the Scryfall JSON API (cached
+ * weekly) instead of using the named-redirect form, which doesn't
+ * reliably follow as a CSS bg-image. Falls back to a transparent
+ * layer when Scryfall is unreachable.
  */
-export function ThemeBackdrop({ theme }: { theme: Theme }) {
+export async function ThemeBackdrop({ theme }: { theme: Theme }) {
+  const artUrl =
+    (await resolveScryfallArtCrop(theme.artCredit)) ?? theme.artUrl;
   return (
     <div className="pointer-events-none absolute inset-0 -z-10 overflow-hidden">
       <div
         className="absolute -inset-12 bg-cover bg-center opacity-55 blur-2xl"
-        style={{ backgroundImage: `url("${theme.artUrl}")` }}
+        style={{ backgroundImage: `url("${artUrl}")` }}
         aria-hidden
       />
       <div
