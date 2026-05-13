@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
+import { cookies } from "next/headers";
 import Link from "next/link";
 import { Suspense } from "react";
 import { UserMenu } from "@/components/UserMenu";
+import { getTheme, rotatingThemeForDate, themeStyle } from "@/lib/themes";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -10,11 +12,17 @@ export const metadata: Metadata = {
     "A magical, modern explorer for Magic: The Gathering cards, powered by Scryfall.",
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const store = await cookies();
+  const rotate = store.get("theme_rotate")?.value === "1";
+  const explicit = store.get("theme")?.value;
+  const themeId = rotate ? rotatingThemeForDate() : explicit;
+  const theme = getTheme(themeId);
+
   return (
     <html lang="en">
       <head>
@@ -29,7 +37,11 @@ export default function RootLayout({
           rel="stylesheet"
         />
       </head>
-      <body className="font-sans antialiased">
+      <body
+        className="font-sans antialiased"
+        data-theme={theme.id}
+        style={themeStyle(theme)}
+      >
         <div className="mx-auto flex min-h-screen max-w-6xl flex-col px-6">
           <header className="flex items-center justify-between border-b border-ink-700/50 py-5">
             <Link href="/" className="group flex items-center gap-2.5">

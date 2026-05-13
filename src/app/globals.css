@@ -16,13 +16,13 @@
       /* grid: horizontal lines every 72px */
       linear-gradient(
         to bottom,
-        rgba(167, 139, 250, 0.07) 1px,
+        var(--theme-grid-line, rgba(167, 139, 250, 0.07)) 1px,
         transparent 1px
       ),
       /* grid: vertical lines every 72px */
       linear-gradient(
         to right,
-        rgba(167, 139, 250, 0.07) 1px,
+        var(--theme-grid-line, rgba(167, 139, 250, 0.07)) 1px,
         transparent 1px
       ),
       /* faint starfield over the grid intersections */
@@ -31,28 +31,28 @@
         rgba(252, 211, 77, 0.06) 1px,
         transparent 0
       ),
-      /* aurora — violet from top, brighter */
+      /* aurora — top, theme-tinted */
       radial-gradient(
         ellipse 75% 50% at 50% -10%,
-        rgba(168, 85, 247, 0.34),
+        var(--theme-aurora-top, rgba(168, 85, 247, 0.34)),
         transparent 60%
       ),
-      /* gold accent — top right corner, magical alchemy warmth */
+      /* accent corner — top-right */
       radial-gradient(
         ellipse 38% 28% at 100% 0%,
-        rgba(251, 191, 36, 0.12),
+        var(--theme-aurora-corner, rgba(251, 191, 36, 0.12)),
         transparent 60%
       ),
-      /* warm pink accent — bottom right */
+      /* bottom-right accent */
       radial-gradient(
         ellipse 55% 35% at 95% 100%,
-        rgba(244, 114, 182, 0.14),
+        var(--theme-aurora-bottom-right, rgba(244, 114, 182, 0.14)),
         transparent 65%
       ),
-      /* indigo accent — bottom left */
+      /* bottom-left accent */
       radial-gradient(
         ellipse 65% 40% at 0% 90%,
-        rgba(99, 102, 241, 0.18),
+        var(--theme-aurora-bottom-left, rgba(99, 102, 241, 0.18)),
         transparent 65%
       ),
       linear-gradient(180deg, #0c071f 0%, #08051a 100%);

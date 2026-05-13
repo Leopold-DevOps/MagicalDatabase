@@ -1,8 +1,11 @@
+import { cookies } from "next/headers";
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { ThemePicker } from "@/components/ThemePicker";
 import { UsernameEditor } from "@/components/UsernameEditor";
 import { supabaseConfigured } from "@/lib/supabase/env";
 import { supabaseServer } from "@/lib/supabase/server";
+import { getTheme, rotatingThemeForDate } from "@/lib/themes";
 
 export default async function AccountPage() {
   if (!supabaseConfigured()) redirect("/");
@@ -23,6 +26,13 @@ export default async function AccountPage() {
     ? new Date(user.created_at).toLocaleDateString()
     : "—";
 
+  const store = await cookies();
+  const autoRotate = store.get("theme_rotate")?.value === "1";
+  const themeCookie = store.get("theme")?.value;
+  const themeId = autoRotate
+    ? rotatingThemeForDate()
+    : getTheme(themeCookie).id;
+
   return (
     <div className="mx-auto max-w-xl">
       <h1 className="font-display text-3xl text-ink-50">Account</h1>
@@ -37,6 +47,8 @@ export default async function AccountPage() {
       </div>
 
       <UsernameEditor initialUsername={profile?.username ?? null} />
+
+      <ThemePicker currentTheme={themeId} autoRotate={autoRotate} />
 
       <div className="surface mt-4 flex flex-wrap items-center justify-between gap-3 p-5">
         <div>
