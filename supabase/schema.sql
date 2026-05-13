@@ -189,8 +189,18 @@ create table if not exists public.folders (
   user_id uuid not null references auth.users on delete cascade,
   name text not null check (char_length(name) between 1 and 80),
   parent_folder_id uuid references public.folders on delete cascade,
+  color text not null default 'arcane'
+    check (color in ('arcane','ember','forest','tide','sun','shadow')),
+  cover_scryfall_id text,
+  cover_image_url text,
   created_at timestamptz not null default now()
 );
+alter table public.folders
+  add column if not exists color text not null default 'arcane';
+alter table public.folders
+  add column if not exists cover_scryfall_id text;
+alter table public.folders
+  add column if not exists cover_image_url text;
 create index if not exists folders_user_idx
   on public.folders(user_id, parent_folder_id);
 alter table public.collections

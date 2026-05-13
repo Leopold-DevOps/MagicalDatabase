@@ -795,10 +795,12 @@ export async function importDecklist(
 export async function createFolder(
   name: string,
   parentFolderId: string | null,
+  color: string = "arcane",
 ): Promise<{ ok: true; id: string } | { error: string }> {
   const trimmed = (name ?? "").trim();
   if (!trimmed) return { error: "Folder name is required" };
   if (trimmed.length > 80) return { error: "Folder name is too long" };
+  if (!isCollectionColor(color)) return { error: "Invalid color" };
 
   const supabase = await supabaseServer();
   const {
@@ -824,6 +826,7 @@ export async function createFolder(
       user_id: user.id,
       name: trimmed,
       parent_folder_id: parentFolderId,
+      color,
     })
     .select("id")
     .single();
@@ -837,10 +840,24 @@ export async function renameFolder(
   folderId: string,
   name: string,
 ): Promise<{ ok: true } | { error: string }> {
-  const trimmed = (name ?? "").trim();
+  return updateFolder(folderId, { name });
+}
+
+/**
+ * Update a folder's name / colour / cover. cardId may be a card from
+ * any collection inside the folder (or any subfolder); pass null to
+ * clear. The cover URL is run through the art_crop transform so the
+ * stored image is the artwork only.
+ */
+export async function updateFolder(
+  folderId: string,
+  patch: {
+    name?: string;
+    color?: string;
+    coverCardId?: string | null;
+  },
+): Promise<{ ok: true } | { error: string }> {
   if (!folderId) return { error: "Missing folder" };
-  if (!trimmed) return { error: "Folder name is required" };
-  if (trimmed.length > 80) return { error: "Folder name is too long" };
 
   const supabase = await supabaseServer();
   const {
@@ -848,11 +865,53 @@ export async function renameFolder(
   } = await supabase.auth.getUser();
   if (!user) return { error: "Not signed in" };
 
+  const update: Record<string, unknown> = {};
+
+  if (patch.name !== undefined) {
+    const trimmed = patch.name.trim();
+    if (!trimmed) return { error: "Folder name is required" };
+    if (trimmed.length > 80) return { error: "Folder name is too long" };
+    update.name = trimmed;
+  }
+
+  if (patch.color !== undefined) {
+    if (!isCollectionColor(patch.color)) return { error: "Invalid color" };
+    update.color = patch.color;
+  }
+
+  if (patch.coverCardId !== undefined) {
+    if (patch.coverCardId === null) {
+      update.cover_scryfall_id = null;
+      update.cover_image_url = null;
+    } else {
+      // Card must live in a collection that belongs to this folder or
+      // one of its subfolders.
+      const { data: childFolders } = await supabase
+        .from("folders")
+        .select("id")
+        .eq("parent_folder_id", folderId);
+      const folderIds = [folderId, ...(childFolders ?? []).map((f) => f.id)];
+
+      const { data: card } = await supabase
+        .from("collection_cards")
+        .select("scryfall_id, image_url, collection_id, collections!inner(folder_id)")
+        .eq("id", patch.coverCardId)
+        .in("collections.folder_id", folderIds)
+        .maybeSingle();
+      if (!card) return { error: "Card not in this folder" };
+      update.cover_scryfall_id = card.scryfall_id;
+      update.cover_image_url = toArtCropUrl(card.image_url as string | null);
+    }
+  }
+
+  if (Object.keys(update).length === 0) return { ok: true };
+
   const { error } = await supabase
     .from("folders")
-    .update({ name: trimmed })
+    .update(update)
     .eq("id", folderId);
   if (error) return { error: error.message };
+
   revalidatePath("/collections");
   return { ok: true };
 }

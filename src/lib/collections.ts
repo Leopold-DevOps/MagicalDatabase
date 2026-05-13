@@ -72,6 +72,9 @@ export type Folder = {
   user_id: string;
   name: string;
   parent_folder_id: string | null;
+  color: CollectionColor;
+  cover_scryfall_id: string | null;
+  cover_image_url: string | null;
   created_at: string;
 };
 
