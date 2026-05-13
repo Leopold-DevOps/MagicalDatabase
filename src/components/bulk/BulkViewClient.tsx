@@ -138,10 +138,22 @@ export function BulkViewClient({
 }) {
   const [mode, setMode] = useState<Mode>("box");
   const [groupBy, setGroupBy] = useState<GroupBy>("set");
+  const [search, setSearch] = useState("");
+
+  const filteredCards = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return cards;
+    return cards.filter((c) => c.card_name.toLowerCase().includes(q));
+  }, [cards, search]);
 
   const groups = useMemo(
-    () => groupCards(cards, colorMap, groupBy),
-    [cards, colorMap, groupBy],
+    () => groupCards(filteredCards, colorMap, groupBy),
+    [filteredCards, colorMap, groupBy],
+  );
+
+  const totalMatches = filteredCards.reduce(
+    (acc, c) => acc + (c.quantity ?? 1),
+    0,
   );
 
   return (
@@ -152,10 +164,30 @@ export function BulkViewClient({
         groupBy={groupBy}
         onGroupBy={setGroupBy}
         showGroupBy={mode === "box"}
+        search={search}
+        onSearch={setSearch}
       />
 
-      {mode === "grid" ? (
-        <GridView cards={cards} isOwner={isOwner} />
+      {search.trim() && (
+        <p className="text-xs text-ink-500">
+          {filteredCards.length} unique · {totalMatches} total matching
+          <button
+            type="button"
+            onClick={() => setSearch("")}
+            className="ml-2 text-violet-300 underline-offset-2 hover:underline"
+          >
+            clear
+          </button>
+        </p>
+      )}
+
+      {filteredCards.length === 0 ? (
+        <div className="surface p-10 text-center text-sm text-ink-500">
+          No cards match{" "}
+          <span className="text-ink-200">&ldquo;{search}&rdquo;</span>.
+        </div>
+      ) : mode === "grid" ? (
+        <GridView cards={filteredCards} isOwner={isOwner} />
       ) : (
         <Box groups={groups} />
       )}
@@ -169,15 +201,28 @@ function Toolbar({
   groupBy,
   onGroupBy,
   showGroupBy,
+  search,
+  onSearch,
 }: {
   mode: Mode;
   onMode: (m: Mode) => void;
   groupBy: GroupBy;
   onGroupBy: (g: GroupBy) => void;
   showGroupBy: boolean;
+  search: string;
+  onSearch: (v: string) => void;
 }) {
   return (
     <div className="surface flex flex-wrap items-center gap-3 p-3 text-xs">
+      <input
+        type="search"
+        value={search}
+        onChange={(e) => onSearch(e.target.value)}
+        placeholder="Search by card name…"
+        className="input-field flex-1 min-w-[180px] py-1.5 text-sm"
+        aria-label="Search cards"
+      />
+
       <div className="flex items-center gap-1">
         <Tab active={mode === "box"} onClick={() => onMode("box")}>
           Box
