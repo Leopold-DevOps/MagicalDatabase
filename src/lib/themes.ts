@@ -50,8 +50,8 @@ export const THEME_LIST: Theme[] = [
       "--theme-accent-soft": "rgba(251, 191, 36, 0.18)",
     },
     artUrl:
-      "https://api.scryfall.com/cards/named?exact=Sol+Ring&format=image&version=art_crop",
-    artCredit: "Sol Ring",
+      "https://api.scryfall.com/cards/named?exact=Liliana+of+the+Veil&format=image&version=art_crop",
+    artCredit: "Liliana of the Veil",
   },
   {
     id: "bloomburrow",
@@ -67,8 +67,8 @@ export const THEME_LIST: Theme[] = [
       "--theme-accent-soft": "rgba(132, 204, 22, 0.22)",
     },
     artUrl:
-      "https://api.scryfall.com/cards/named?exact=Three+Tree+City&format=image&version=art_crop",
-    artCredit: "Three Tree City",
+      "https://api.scryfall.com/cards/named?exact=Mabel%2C+Heir+to+Cragflame&format=image&version=art_crop",
+    artCredit: "Mabel, Heir to Cragflame",
   },
   {
     id: "strixhaven",
@@ -84,8 +84,8 @@ export const THEME_LIST: Theme[] = [
       "--theme-accent-soft": "rgba(94, 234, 212, 0.22)",
     },
     artUrl:
-      "https://api.scryfall.com/cards/named?exact=Strixhaven%2C+School+of+Mages&format=image&version=art_crop",
-    artCredit: "Strixhaven, School of Mages",
+      "https://api.scryfall.com/cards/named?exact=Professor+Onyx&format=image&version=art_crop",
+    artCredit: "Professor Onyx",
   },
   {
     id: "phyrexia",
@@ -101,8 +101,8 @@ export const THEME_LIST: Theme[] = [
       "--theme-accent-soft": "rgba(244, 63, 94, 0.20)",
     },
     artUrl:
-      "https://api.scryfall.com/cards/named?exact=Elesh+Norn%2C+Mother+of+Machines&format=image&version=art_crop",
-    artCredit: "Elesh Norn, Mother of Machines",
+      "https://api.scryfall.com/cards/named?exact=Sheoldred%2C+the+Apocalypse&format=image&version=art_crop",
+    artCredit: "Sheoldred, the Apocalypse",
   },
   {
     id: "innistrad",
@@ -118,8 +118,8 @@ export const THEME_LIST: Theme[] = [
       "--theme-accent-soft": "rgba(148, 163, 184, 0.22)",
     },
     artUrl:
-      "https://api.scryfall.com/cards/named?exact=Avacyn%2C+Angel+of+Hope&format=image&version=art_crop",
-    artCredit: "Avacyn, Angel of Hope",
+      "https://api.scryfall.com/cards/named?exact=Liliana%2C+the+Last+Hope&format=image&version=art_crop",
+    artCredit: "Liliana, the Last Hope",
   },
 ];
 

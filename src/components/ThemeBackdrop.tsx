@@ -21,39 +21,47 @@ export async function ThemeBackdrop({ theme }: { theme: Theme }) {
   // Primary: Scryfall resolve to canonical art_crop URL.
   // Fallback chain so something always shows:
   //   1. resolveScryfallArtCrop → cards.scryfall.io/art_crop/... (best)
-  //   2. theme.artUrl (Scryfall named-redirect form)
-  //   3. picsum.photos seeded by theme id (always loads — proves the
-  //      backdrop machinery is alive even when Scryfall is unreachable)
+  //   2. theme.artUrl (Scryfall named-redirect form — confirmed working
+  //      with names like "Professor+Onyx")
+  //   3. picsum.photos seeded by theme id
   const resolved = await resolveScryfallArtCrop(theme.artCredit);
   const artUrl =
     resolved ??
     theme.artUrl ??
-    `https://picsum.photos/seed/${theme.id}/1600/900`;
+    `https://picsum.photos/seed/${theme.id}/1920/1080`;
   return (
-    <div className="pointer-events-none absolute inset-0 -z-10 overflow-hidden">
-      {/* Plain <img> on purpose — decorative, no Next optimization needed,
-          no remotePatterns gate, and easier to debug if it fails to load.
-          data-art-src exposes the URL in devtools for support. */}
+    // fixed positioning pins the backdrop to the viewport so it stays
+    // put while page content scrolls past — gives a parallax feel
+    // without any JS scroll listener. The whole stack is negative-z so
+    // every page surface (cards, header, footer) sits on top.
+    <div className="pointer-events-none fixed inset-0 -z-10 overflow-hidden">
+      {/* Plain <img> on purpose — decorative, no Next optimization,
+          no remotePatterns gate, easier to debug. data-art-src exposes
+          the resolved URL in devtools. */}
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
         src={artUrl}
         alt=""
         aria-hidden
         data-art-src={artUrl}
-        className="absolute left-1/2 top-1/2 h-[120%] w-[120%] max-w-none -translate-x-1/2 -translate-y-1/2 object-cover opacity-60 blur-2xl"
+        className="absolute left-1/2 top-1/2 h-[130%] w-[130%] max-w-none -translate-x-1/2 -translate-y-1/2 object-cover opacity-80 blur-md"
       />
+      {/* Theme accent wash — multiply keeps colour while dimming brights */}
       <div
-        className="absolute inset-0 mix-blend-overlay"
+        className="absolute inset-0 mix-blend-multiply"
         style={{ backgroundColor: theme.vars["--theme-accent-soft"] }}
         aria-hidden
       />
+      {/* Aurora-tinted screen pass so the body's gradient cues carry into
+          the backdrop */}
       <div
-        className="absolute inset-0 mix-blend-screen opacity-50"
+        className="absolute inset-0 mix-blend-screen opacity-40"
         style={{ backgroundColor: theme.vars["--theme-aurora-top"] }}
         aria-hidden
       />
+      {/* Subtle vignette only — keep enough light that the art reads */}
       <div
-        className="absolute inset-0 bg-gradient-to-b from-ink-950/55 via-ink-950/40 to-ink-950"
+        className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_transparent_30%,_rgba(8,5,26,0.65)_100%)]"
         aria-hidden
       />
     </div>

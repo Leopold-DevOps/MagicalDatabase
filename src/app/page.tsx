@@ -12,8 +12,10 @@ export default async function HomePage() {
 
   return (
     <div className="flex flex-col gap-20">
-      <section className="relative isolate -mx-6 overflow-hidden rounded-2xl px-6 py-20 md:py-28">
-        <ThemeBackdrop theme={theme} />
+      {/* Backdrop pins to viewport (fixed inset-0) so the hero art sits
+          behind the whole page and parallaxes as the user scrolls. */}
+      <ThemeBackdrop theme={theme} />
+      <section className="relative py-16 md:py-24">
         <div className="relative z-10 mx-auto max-w-2xl text-center">
           <p className="mb-5 text-xs uppercase tracking-[0.3em] text-violet-300/80">
             A grimoire for planeswalkers
