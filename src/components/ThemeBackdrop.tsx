@@ -32,9 +32,10 @@ export async function ThemeBackdrop({ theme }: { theme: Theme }) {
   return (
     // fixed positioning pins the backdrop to the viewport so it stays
     // put while page content scrolls past — gives a parallax feel
-    // without any JS scroll listener. The whole stack is negative-z so
-    // every page surface (cards, header, footer) sits on top.
-    <div className="pointer-events-none fixed inset-0 -z-10 overflow-hidden">
+    // without any JS scroll listener. Z is 0 (not negative): rendered
+    // as a body child it paints above body's bg gradient but below
+    // the page content wrapper which sits at z-10.
+    <div className="pointer-events-none fixed inset-0 z-0 overflow-hidden">
       {/* Plain <img> on purpose — decorative, no Next optimization,
           no remotePatterns gate, easier to debug. data-art-src exposes
           the resolved URL in devtools. */}

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { cookies } from "next/headers";
 import Link from "next/link";
 import { Suspense } from "react";
+import { ThemeBackdrop } from "@/components/ThemeBackdrop";
 import { UserMenu } from "@/components/UserMenu";
 import { getTheme, rotatingThemeForDate, themeStyle } from "@/lib/themes";
 import "./globals.css";
@@ -42,7 +43,12 @@ export default async function RootLayout({
         data-theme={theme.id}
         style={themeStyle(theme)}
       >
-        <div className="mx-auto flex min-h-screen max-w-6xl flex-col px-6">
+        {/* Theme art renders as the first body child so it paints
+            above the body's background gradients but below positioned
+            page content. The wrapper below uses `relative z-10` to
+            ensure header / main / footer always sit on top. */}
+        <ThemeBackdrop theme={theme} />
+        <div className="relative z-10 mx-auto flex min-h-screen max-w-6xl flex-col px-6">
           <header className="flex items-center justify-between border-b border-ink-700/50 py-5">
             <Link href="/" className="group flex items-center gap-2.5">
               <span
