@@ -18,17 +18,28 @@ import type { Theme } from "@/lib/themes";
  * layer when Scryfall is unreachable.
  */
 export async function ThemeBackdrop({ theme }: { theme: Theme }) {
+  // Primary: Scryfall resolve to canonical art_crop URL.
+  // Fallback chain so something always shows:
+  //   1. resolveScryfallArtCrop → cards.scryfall.io/art_crop/... (best)
+  //   2. theme.artUrl (Scryfall named-redirect form)
+  //   3. picsum.photos seeded by theme id (always loads — proves the
+  //      backdrop machinery is alive even when Scryfall is unreachable)
+  const resolved = await resolveScryfallArtCrop(theme.artCredit);
   const artUrl =
-    (await resolveScryfallArtCrop(theme.artCredit)) ?? theme.artUrl;
+    resolved ??
+    theme.artUrl ??
+    `https://picsum.photos/seed/${theme.id}/1600/900`;
   return (
     <div className="pointer-events-none absolute inset-0 -z-10 overflow-hidden">
       {/* Plain <img> on purpose — decorative, no Next optimization needed,
-          no remotePatterns gate, and easier to debug if it fails to load. */}
+          no remotePatterns gate, and easier to debug if it fails to load.
+          data-art-src exposes the URL in devtools for support. */}
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
         src={artUrl}
         alt=""
         aria-hidden
+        data-art-src={artUrl}
         className="absolute left-1/2 top-1/2 h-[120%] w-[120%] max-w-none -translate-x-1/2 -translate-y-1/2 object-cover opacity-60 blur-2xl"
       />
       <div
