@@ -109,8 +109,8 @@
       hover:bg-ink-800/70 hover:text-white;
   }
   .surface {
-    @apply rounded-xl border border-ink-700/70 bg-ink-900/75
-      shadow-soft backdrop-blur-sm;
+    @apply rounded-xl border border-ink-700/70 bg-ink-900/85
+      shadow-soft backdrop-blur-md;
   }
   .surface-glow {
     @apply surface shadow-glow;

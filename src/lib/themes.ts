@@ -4,6 +4,7 @@
 // root layout; the user's choice is stored in the "theme" cookie.
 
 export const THEMES = [
+  "eoe",
   "arcane",
   "bloomburrow",
   "strixhaven",
@@ -36,6 +37,23 @@ export type Theme = {
 };
 
 export const THEME_LIST: Theme[] = [
+  {
+    id: "eoe",
+    label: "Edge of Eternities",
+    blurb: "Cosmic dark — ancient god-cores and starlight.",
+    vars: {
+      "--theme-aurora-top": "rgba(99, 102, 241, 0.34)",
+      "--theme-aurora-corner": "rgba(20, 184, 166, 0.20)",
+      "--theme-aurora-bottom-right": "rgba(168, 85, 247, 0.20)",
+      "--theme-aurora-bottom-left": "rgba(8, 47, 73, 0.50)",
+      "--theme-grid-line": "rgba(165, 180, 252, 0.07)",
+      "--theme-accent": "#5eead4",
+      "--theme-accent-soft": "rgba(94, 234, 212, 0.22)",
+    },
+    artUrl:
+      "https://api.scryfall.com/cards/named?exact=Uthros%2C+the+God-Core&format=image&version=art_crop",
+    artCredit: "Uthros, the God-Core",
+  },
   {
     id: "arcane",
     label: "Arcane",
@@ -132,7 +150,7 @@ export function isThemeId(v: string | undefined): v is ThemeId {
 }
 
 export function getTheme(id: string | undefined): Theme {
-  return isThemeId(id) ? THEME_BY_ID[id] : THEME_BY_ID.arcane;
+  return isThemeId(id) ? THEME_BY_ID[id] : THEME_BY_ID.eoe;
 }
 
 /**
