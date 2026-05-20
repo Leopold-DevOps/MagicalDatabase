@@ -2,8 +2,6 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Suspense } from "react";
-import { UserMenu } from "@/components/UserMenu";
 
 /**
  * Site chrome (header + footer) wrapper. On the home page (/) we hide
@@ -11,10 +9,17 @@ import { UserMenu } from "@/components/UserMenu";
  * page embeds its own minimal logo + nav inline near the search.
  *
  * Client component so we can read pathname without making the root
- * layout dynamic. Header / footer are not interactive — they just
- * use Link which is fine in a client tree.
+ * layout dynamic. UserMenu is server-rendered and passed in as the
+ * `userMenu` slot so this client module never imports server-only code
+ * (next/headers via supabase).
  */
-export function ChromeShell({ children }: { children: React.ReactNode }) {
+export function ChromeShell({
+  children,
+  userMenu,
+}: {
+  children: React.ReactNode;
+  userMenu: React.ReactNode;
+}) {
   const pathname = usePathname();
   const bare = pathname === "/";
 
@@ -46,9 +51,7 @@ export function ChromeShell({ children }: { children: React.ReactNode }) {
           <Link href="/collections" className="transition hover:text-white">
             Collections
           </Link>
-          <Suspense fallback={null}>
-            <UserMenu />
-          </Suspense>
+          {userMenu}
         </nav>
       </header>
 

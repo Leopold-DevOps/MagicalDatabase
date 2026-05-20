@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
 import { cookies } from "next/headers";
+import { Suspense } from "react";
 import { ChromeShell } from "@/components/ChromeShell";
 import { ThemeBackdrop } from "@/components/ThemeBackdrop";
+import { UserMenu } from "@/components/UserMenu";
 import { getTheme, rotatingThemeForDate, themeStyle } from "@/lib/themes";
 import "./globals.css";
 
@@ -49,7 +51,15 @@ export default async function RootLayout({
             renders <main> bare for the landing experience). */}
         <ThemeBackdrop theme={theme} />
         <div className="relative z-10">
-          <ChromeShell>{children}</ChromeShell>
+          <ChromeShell
+            userMenu={
+              <Suspense fallback={null}>
+                <UserMenu />
+              </Suspense>
+            }
+          >
+            {children}
+          </ChromeShell>
         </div>
       </body>
     </html>
