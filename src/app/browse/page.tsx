@@ -162,7 +162,7 @@ function BrowseTile({
   return (
     <Link
       href={`/collections/${collection.id}`}
-      className="surface group flex h-60 flex-col overflow-hidden transition hover:border-violet-400/40 hover:shadow-glow"
+      className="surface deck-card-pop group flex h-60 flex-col overflow-hidden hover:border-[color:var(--theme-accent)]/40"
     >
       {cover ? (
         <div className="relative h-28 w-full shrink-0 overflow-hidden">

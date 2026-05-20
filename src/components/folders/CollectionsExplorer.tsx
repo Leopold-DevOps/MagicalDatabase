@@ -698,7 +698,7 @@ function CollectionTile({ collection }: { collection: Collection }) {
       ref={setNodeRef}
       {...attributes}
       {...listeners}
-      className={`surface group block h-44 overflow-hidden transition hover:border-violet-400/40 hover:shadow-glow ${
+      className={`surface deck-card-pop group block h-44 overflow-hidden hover:border-[color:var(--theme-accent)]/40 ${
         isDragging ? "opacity-40" : ""
       }`}
     >

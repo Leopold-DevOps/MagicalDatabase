@@ -18,17 +18,19 @@ import type { Theme } from "@/lib/themes";
  * layer when Scryfall is unreachable.
  */
 export async function ThemeBackdrop({ theme }: { theme: Theme }) {
-  // Primary: Scryfall resolve to canonical art_crop URL.
-  // Fallback chain so something always shows:
-  //   1. resolveScryfallArtCrop → cards.scryfall.io/art_crop/... (best)
-  //   2. theme.artUrl (Scryfall named-redirect form — confirmed working
-  //      with names like "Professor+Onyx")
-  //   3. picsum.photos seeded by theme id
-  const resolved = await resolveScryfallArtCrop(theme.artCredit);
-  const artUrl =
-    resolved ??
-    theme.artUrl ??
-    `https://picsum.photos/seed/${theme.id}/1920/1080`;
+  // If the theme already points at a direct cards.scryfall.io asset,
+  // use it verbatim — most reliable, no API round-trip. Otherwise try
+  // to resolve the card name to its art_crop URL, then fall back to
+  // the stored artUrl, then picsum so something always renders.
+  let artUrl: string;
+  if (theme.artUrl.includes("cards.scryfall.io")) {
+    artUrl = theme.artUrl;
+  } else {
+    artUrl =
+      (await resolveScryfallArtCrop(theme.artCredit)) ??
+      theme.artUrl ??
+      `https://picsum.photos/seed/${theme.id}/1920/1080`;
+  }
   return (
     // fixed positioning pins the backdrop to the viewport so it stays
     // put while page content scrolls past — gives a parallax feel

@@ -30,15 +30,10 @@ export function ChromeShell({
   return (
     <div className="mx-auto flex min-h-screen max-w-6xl flex-col px-6">
       <header className="flex items-center justify-between border-b border-ink-700/50 py-5">
-        <Link href="/" className="group flex items-center gap-2.5">
-          <span
-            aria-hidden
-            className="grid h-8 w-8 place-items-center rounded-lg bg-gradient-to-br from-violet-400 via-violet-500 to-violet-700 text-sm font-semibold text-gold-200 shadow-glow ring-1 ring-gold-300/30 transition group-hover:from-violet-300 group-hover:to-violet-600 group-hover:text-gold-100 group-hover:ring-gold-300/60"
-          >
-            ✦
-          </span>
-          <span className="font-display text-lg tracking-wide text-ink-50 transition group-hover:text-white">
-            Magical Database
+        <Link href="/" className="group font-display text-lg tracking-wide">
+          <span className="title-glow-inline">Magical</span>{" "}
+          <span className="text-ink-50 transition group-hover:text-white">
+            Database
           </span>
         </Link>
         <nav className="flex items-center gap-5 text-sm text-ink-300">

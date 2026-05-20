@@ -208,6 +208,11 @@
     color: var(--theme-accent, #5eead4);
     animation: title-glow 4.5s ease-in-out infinite;
   }
+  /* Inline variant for the compact header wordmark. */
+  .title-glow-inline {
+    color: var(--theme-accent, #5eead4);
+    animation: title-glow 4.5s ease-in-out infinite;
+  }
 
   /* Satisfying springy lift for deck cards. The overshoot cubic-bezier
      gives the pop a little bounce; the glow uses the theme accent. */

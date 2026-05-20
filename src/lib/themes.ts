@@ -51,7 +51,7 @@ export const THEME_LIST: Theme[] = [
       "--theme-accent-soft": "rgba(94, 234, 212, 0.22)",
     },
     artUrl:
-      "https://api.scryfall.com/cards/named?exact=Uthros%2C+the+God-Core&format=image&version=art_crop",
+      "https://cards.scryfall.io/art_crop/front/1/1/11da39d6-cfa6-498d-91b1-11454cc7e5a3.jpg?1755341453",
     artCredit: "Uthros, the God-Core",
   },
   {
