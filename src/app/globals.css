@@ -200,6 +200,31 @@
     animation: foil-shine 5s ease-in-out infinite;
     z-index: 3;
   }
+
+  /* Glowing wordmark — colour + pulsing halo pulled from the active
+     theme accent so it always matches the backdrop. */
+  .title-glow {
+    display: block;
+    color: var(--theme-accent, #5eead4);
+    animation: title-glow 4.5s ease-in-out infinite;
+  }
+
+  /* Satisfying springy lift for deck cards. The overshoot cubic-bezier
+     gives the pop a little bounce; the glow uses the theme accent. */
+  .deck-card-pop {
+    transition:
+      transform 0.22s cubic-bezier(0.34, 1.56, 0.64, 1),
+      box-shadow 0.22s ease,
+      filter 0.22s ease;
+    will-change: transform;
+  }
+  .deck-card-pop:hover {
+    transform: translateY(-8px) scale(1.05) rotate(-0.5deg);
+    box-shadow:
+      0 18px 40px -10px rgba(8, 5, 26, 0.8),
+      0 0 28px -6px var(--theme-accent-soft, rgba(94, 234, 212, 0.22));
+    z-index: 30;
+  }
 }
 
 @layer utilities {
@@ -217,4 +242,17 @@
   .stagger > *:nth-child(9)  { animation-delay: 240ms; }
   .stagger > *:nth-child(10) { animation-delay: 270ms; }
   .stagger > *:nth-child(n+11) { animation-delay: 300ms; }
+}
+
+@keyframes title-glow {
+  0%, 100% {
+    text-shadow:
+      0 0 14px var(--theme-accent-soft, rgba(94, 234, 212, 0.5)),
+      0 0 28px var(--theme-accent-soft, rgba(94, 234, 212, 0.3));
+  }
+  50% {
+    text-shadow:
+      0 0 22px var(--theme-accent, #5eead4),
+      0 0 44px var(--theme-accent-soft, rgba(94, 234, 212, 0.45));
+  }
 }

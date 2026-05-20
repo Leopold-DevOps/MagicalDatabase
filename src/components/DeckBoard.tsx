@@ -248,7 +248,7 @@ function GridCard({ item, isOwner }: { item: Item; isOwner: boolean }) {
       <Link
         href={`/cards/${card.scryfall_id}`}
         prefetch={false}
-        className="block overflow-hidden rounded-md ring-1 ring-ink-800/70 transition hover:ring-violet-400/60 hover:shadow-glow"
+        className="deck-card-pop block overflow-hidden rounded-md ring-1 ring-ink-800/70 hover:ring-[color:var(--theme-accent)]/60"
       >
         <div className="relative aspect-[5/7] w-full bg-ink-950">
           {card.image_url ? (
@@ -641,7 +641,7 @@ function StackedCard({
 
   return (
     <div
-      className="group relative transition-transform duration-200 hover:z-20 hover:-translate-y-1"
+      className="deck-card-pop group relative"
       style={{ marginTop: offset }}
     >
       <Link

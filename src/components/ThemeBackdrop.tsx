@@ -45,7 +45,7 @@ export async function ThemeBackdrop({ theme }: { theme: Theme }) {
         alt=""
         aria-hidden
         data-art-src={artUrl}
-        className="absolute left-1/2 top-1/2 h-[130%] w-[130%] max-w-none -translate-x-1/2 -translate-y-1/2 object-cover opacity-80 blur-md"
+        className="absolute left-1/2 top-1/2 h-[150%] w-[150%] max-w-none -translate-x-1/2 -translate-y-1/2 object-cover opacity-80 blur-md"
       />
       {/* Theme accent wash — multiply keeps colour while dimming brights */}
       <div
